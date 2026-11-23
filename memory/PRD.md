@@ -10,6 +10,9 @@ User choices: Emergent-managed sign-in (Google + email/password); each signed-in
 - Frontend React + Clerk (@clerk/react), shadcn, recharts. Public pages under src/pages/public, app under src/pages/app, shell in components/agos.
 - MongoDB collections: users, workspaces, members, expenses, budgets, cards, card_transactions, payments (stellar sub-doc), stellar_accounts, stellar_recipients, files, audit_logs, waitlist.
 
+## Implemented (2026-11-23, iteration 5)
+- Pitch summary PDF (reportlab, one A4 page): GET /api/payments/{id}/pitch-summary?expense_id&duration — re-verifies on Horizon, shows snapshot KPIs (synthetic), timeline, full transaction details, QR + explorer link, disclaimers. Download button at tour end and in Payments drawer for confirmed payments.
+
 ## Implemented (2026-11-23, iteration 4)
 - Tour share link: /tour (protected; signed-out visitors go to sign-in and return) finds or creates the visitor's private demo, clears personas and opens the investor tour automatically. Copy-link buttons in header and tour panel; hero link on landing page; mobile tour icon.
 

@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the Pitch Summary PDF feature on both backend and frontend, using 2 fresh +clerk_test users (A owns a demo workspace, B owns a separate demo workspace). Exactly 2 Testnet transactions: a 25 XLM API seed payment and a 5 XLM payment from the full UI tour. Backend: 15 of 15 pytest cases pass. (1) An unconfirmed payment returns 409. (2) A confirmed payment returns application/pdf with attachment filename agos-pitch-summary.pdf, exactly 1 page. (3) duration 0, 7201, -5 and 'abc' each return 422; durations 1 and 7200 render 'in 0:01' and 'in 120:00'. (4) The PDF contains the title 'From expense to verified settlement in 1:44', synthetic KPI boxes, the timeline, the full tx hash, ledger, source, destination, the Horizon verification line, the explorer URL (also a clickable link) and the disclaimers. (5) Isolation: user B's token with B's workspace gets 404, B's token with A's workspace id gets 404, no auth gets 401, an unknown id gets 404, and an expense_id from another workspace is silently ignored. (6) Role scope: an employee persona (X-Act-As Paolo) gets 404 on the owner's payment and 200 on his own payment. Rendering with pymupdf: no overlapping text with normal data, but text overlaps when the merchant name is long (see issues). Frontend: the full 6-step tour completed, and tour-download-pdf-btn downloaded agos-pitch-summary.pdf. That PDF is 1 page, titled 'in 0:13', has the full timeline including 'Expense submitted: Figma (investor tour)' and 'Expense approved', ledger 5882184, and no overlap. In the Payments drawer, pitch-pdf-btn is shown for the confirmed payment and downloads the PDF; it is not shown for the pending_approval payment. No console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "pitch_pdf.py timeline (line 127)", "issue": "The step description is cut at 80 characters, not at a measured width. Because of that, long text runs into the right-aligned timestamp. Reproduced with an expense merchant of 74 characters (merchant allows up to 120): 'TEST_Very Long Merchant Name Professional Services Corporation International · PHP ...' overlaps '23 Nov 2026, 11:48 UTC' by 43pt (seen in the pymupdf render). recipient_name (up to 120 characters) can cause the same problem on the 'Payment requested' line. Fix: fit the text to the available width (W - M - timestamp width - (M+140) - gap) using stringWidth or simpleSplit, then add an ellipsis or wrap it."},
+      {"endpoint": "pitch_pdf.py header subtitle (line 80)", "issue": "The subtitle (workspace name, location, generated time) is not width-checked. A long real-workspace name or location would run off the right edge of the page. Not reproduced, because demo workspace names are fixed. Use simpleSplit or truncate it."},
+      {"endpoint": "pitch_pdf.py title", "issue": "When the PDF is downloaded from the Payments drawer (no expense_id), the title still reads 'From expense to verified settlement', but the timeline has no expense steps. Consider a title such as 'Verified settlement' when no expense is given."},
+      {"endpoint": "pitch_pdf.py _dt", "issue": "Timestamps show minutes only. In a 13-second tour, all 6 timeline steps show the same '23 Nov 2026, 11:49 UTC', which weakens the 'what happened' story. Consider showing HH:MM:SS."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DemoTour tour-complete", "issue": "The useElapsed timer keeps running after the tour finishes. The headline 'Settled and verified in {elapsed}' went from 0:13 to 0:16 while the panel stayed open, but the downloaded PDF correctly says 0:13 (ctx.duration). Investors see two different durations. Fix: when done, show ctx.duration formatted as M:SS, or stop the timer.", "selector": "[data-testid='tour-complete'], [data-testid='tour-timer']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Pitch summary PDF", "issues": ["Roughly the bottom 20% of the A4 page is empty. The layout is otherwise clean, has good contrast and the QR code is legible. Optional: move the disclaimers to the bottom of the page as a footer."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_pitch_pdf.py", "/app/backend/tests/pdf_setup.py", "/app/backend/tests/pdf_overlap.py", "/app/test_reports/pytest/pitch_pdf_results.xml"],
+  "action_items": [
+    "Stop the tour completion timer, or show ctx.duration in 'Settled and verified in …', so it matches the PDF",
+    "Fit the timeline description text in pitch_pdf.py to the available width so long merchant or recipient names do not overlap the timestamp",
+    "Width-check the header subtitle (workspace name and location)",
+    "Optional: change the title when there is no expense_id; show seconds in timeline timestamps"
+  ],
+  "critical_code_review_comments": [
+    "downloadFile uses responseType 'blob'. On errors, axios gives a Blob body, so errMsg(e) probably cannot read the JSON 'detail' (for example the 409 message) and shows a generic error. Parse the blob text before showing the toast.",
+    "pitch_summary runs refresh_stellar, which calls Horizon, on every download and swallows all exceptions. That is acceptable, but a slow Horizon response will delay the PDF. Consider a timeout.",
+    "Seeded 'approved' demo expenses have only a pending_approval history entry and no 'approved' entry. A PDF for one of them therefore skips the 'Expense approved' step, and its 'submitted' time is the seeding time, not the expense date. This is a seed data inconsistency."
+  ],
+  "updated_files": ["/app/backend/tests/test_pitch_pdf.py", "/app/backend/tests/pdf_setup.py", "/app/backend/tests/pdf_overlap.py"],
+  "success_rate": {"backend": "100% (15/15 pytest); 1 layout overlap found with long input", "frontend": "100% of requested flows; 1 medium timer mismatch"},
+  "seed_data_creation": "Created agos.t5pdfA+clerk_test and agos.t5pdfB+clerk_test (2 demo workspaces), 1 TEST_Pending contractor payment, 1 TEST_ long-merchant expense, and 2 Testnet txs (25 XLM API, 5 XLM tour). Deleted everything afterwards by workspace id and user id: all workspace-scoped docs, the workspaces, the users docs and the Clerk users. No other data touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run `python /app/backend/tests/pdf_setup.py`. It is idempotent, does at most 1 Testnet tx, and writes /tmp/pdf_state.json (ticketA, wsA/wsB, confirmed/unconfirmed payment ids). Then run `pytest /app/backend/tests/test_pitch_pdf.py` and `python /app/backend/tests/pdf_overlap.py <file.pdf>` (checks span overlap and renders a PNG). To test the overlap fix, create an expense with a merchant of more than 70 characters, approve it, and pass it as expense_id. Sign-in tickets are single-use, so re-run pdf_setup.py for each browser session."
+}

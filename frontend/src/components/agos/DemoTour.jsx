@@ -18,9 +18,9 @@ const STEPS = [
   { title: "Verify independently", body: "AGOS re-checks the transaction on Horizon. Anyone can confirm it on the public explorer.", path: "/app/stellar", cta: "Verify on ledger" },
 ];
 
-function useElapsed(start) {
+function useElapsed(start, stopped) {
   const [now, setNow] = useState(Date.now());
-  useEffect(() => { if (!start) return undefined; setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [start]);
+  useEffect(() => { if (!start || stopped) return undefined; setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [start, stopped]);
   if (!start) return "0:00";
   const s = Math.max(0, Math.floor((now - start) / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -66,7 +66,8 @@ function DemoTour({ onClose }) {
   const [busy, setBusy] = useState(false);
   const [ctx, setCtx] = useState({});
   const [start, setStart] = useState(null);
-  const elapsed = useElapsed(start);
+  const elapsed = useElapsed(start, step >= STEPS.length);
+  const shownTime = step >= STEPS.length && ctx.duration ? `${Math.floor(ctx.duration / 60)}:${String(ctx.duration % 60).padStart(2, "0")}` : elapsed;
   const s = STEPS[step];
 
   const actions = [
@@ -136,13 +137,13 @@ function DemoTour({ onClose }) {
     <div className="fixed bottom-5 right-5 z-50 w-[380px] max-w-[calc(100vw-2.5rem)] rounded-2xl border bg-white shadow-2xl fade-up" data-testid="investor-tour-panel">
       <div className="flex items-center justify-between rounded-t-2xl bg-[hsl(var(--navy-ink))] px-5 py-3 text-white">
         <div className="text-sm font-semibold">Investor tour · expense to settlement</div>
-        <div className="flex items-center gap-3"><span className="tnum text-xs text-slate-300" data-testid="tour-timer">{elapsed}</span><button onClick={copyTourLink} title="Copy shareable tour link" data-testid="tour-panel-copy-link"><Link2 className="h-4 w-4" /></button><button onClick={onClose} data-testid="tour-close-btn"><X className="h-4 w-4" /></button></div>
+        <div className="flex items-center gap-3"><span className="tnum text-xs text-slate-300" data-testid="tour-timer">{shownTime}</span><button onClick={copyTourLink} title="Copy shareable tour link" data-testid="tour-panel-copy-link"><Link2 className="h-4 w-4" /></button><button onClick={onClose} data-testid="tour-close-btn"><X className="h-4 w-4" /></button></div>
       </div>
       <ol className="flex gap-1 px-5 pt-4">{STEPS.map((st, i) => <li key={st.title} className={`h-1 flex-1 rounded-full ${i < step ? "bg-emerald-500" : i === step ? "bg-[hsl(var(--primary))]" : "bg-slate-200"}`} />)}</ol>
       <div className="px-5 pb-5 pt-4">
         {done ? (
           <div data-testid="tour-complete">
-            <div className="flex items-center gap-2 font-semibold text-[hsl(var(--navy-ink))]"><Check className="h-4 w-4 text-emerald-600" />Settled and verified in {elapsed}</div>
+            <div className="flex items-center gap-2 font-semibold text-[hsl(var(--navy-ink))]"><Check className="h-4 w-4 text-emerald-600" />Settled and verified in {shownTime}</div>
             <p className="mt-2 text-sm text-slate-600">Expense submitted, approved and counted in budgets; a payment approved and settled on Stellar Testnet{ctx.ledger ? ` at ledger ${ctx.ledger}` : ""}{ctx.verified ? ", verified against Horizon" : ""}.</p>
             {ctx.explorer && <a href={ctx.explorer} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm text-[hsl(var(--stellar))] underline" data-testid="tour-explorer-link">{shortKey(ctx.txHash, 8)} on explorer <ExternalLink className="h-3.5 w-3.5" /></a>}
             <p className="mt-3 text-[11px] text-muted-foreground">Testnet XLM has no monetary value; ledger confirmation does not prove fiat delivery. Expense data is synthetic.</p>

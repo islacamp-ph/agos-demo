@@ -7,6 +7,7 @@ from reportlab.graphics.shapes import Drawing
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import simpleSplit
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 
 NAVY, INK, MUTED, TEAL, LINE, AMBER = (HexColor(c) for c in ("#14263d", "#142033", "#5b6676", "#1f6f7f", "#dfe4ea", "#8a5a00"))
@@ -17,7 +18,16 @@ M = 42
 def _dt(s):
     if not s:
         return "—"
-    return datetime.fromisoformat(s.replace("Z", "+00:00")).strftime("%d %b %Y, %H:%M UTC")
+    return datetime.fromisoformat(s.replace("Z", "+00:00")).strftime("%d %b %Y, %H:%M:%S UTC")
+
+
+def _fit(text, font, size, width):
+    text = str(text)
+    if stringWidth(text, font, size) <= width:
+        return text
+    while text and stringWidth(text + "…", font, size) > width:
+        text = text[:-1]
+    return text + "…"
 
 
 def _php(n):
@@ -74,10 +84,12 @@ def build_pitch_pdf(ws: dict, kpis: dict, payment: dict, expense: dict | None, d
     c.setFillColor(HexColor("#ffffff"))
     c.setFont("Helvetica-Bold", 19)
     took = f" in {duration // 60}:{duration % 60:02d}" if duration else ""
-    c.drawString(M, H - 80, f"From expense to verified settlement{took}")
+    title = "From expense to verified settlement" if expense else "Verified Stellar settlement"
+    c.drawString(M, H - 80, _fit(f"{title}{took}", "Helvetica-Bold", 19, W - 2 * M))
     c.setFont("Helvetica", 9)
     c.setFillColor(HexColor("#c9d3df"))
-    c.drawString(M, H - 98, f"Investor tour summary  ·  {ws['name']}, {ws.get('location', '')}  ·  generated {_dt(v.get('checked_at') or st.get('confirmed_at'))}")
+    sub = f"{'Investor tour summary' if expense else 'Settlement summary'}  ·  {ws['name']}, {ws.get('location', '')}  ·  generated {_dt(v.get('checked_at') or st.get('confirmed_at'))}"
+    c.drawString(M, H - 98, _fit(sub, "Helvetica", 9, W - 2 * M))
 
     y = H - 150
     _label(c, M, y, "Business snapshot · synthetic demo data")
@@ -124,7 +136,7 @@ def build_pitch_pdf(ws: dict, kpis: dict, payment: dict, expense: dict | None, d
         c.drawString(M + 18, y, t)
         c.setFont("Helvetica", 8.5)
         c.setFillColor(MUTED)
-        c.drawString(M + 140, y, d[:80])
+        c.drawString(M + 140, y, _fit(d, "Helvetica", 8.5, W - M - stringWidth(when, "Helvetica", 8.5) - 12 - (M + 140)))
         c.drawRightString(W - M, y, when)
         y -= 26
     y -= 8
@@ -155,17 +167,21 @@ def build_pitch_pdf(ws: dict, kpis: dict, payment: dict, expense: dict | None, d
     c.linkURL(explorer, (M, y - 2, W - M, y + 9))
 
     y -= 26
-    c.setFillColor(AMBER)
-    c.setFont("Helvetica-Bold", 7.5)
-    c.drawString(M, y, "IMPORTANT")
-    c.setFont("Helvetica", 7.3)
-    c.setFillColor(MUTED)
     notes = ("Business figures, employees and cards are synthetic demo data; cards and domestic payments are simulated. "
              "The Stellar transaction is a genuine Testnet record; Testnet XLM has no monetary value, and ledger confirmation does not prove "
              "fiat delivery to a beneficiary. AGOS is an MVP in development under ISLA Ventures Inc. and is not a bank, lender, payment "
              "institution, electronic money issuer or virtual asset service provider. AGOS is not affiliated with or endorsed by the Stellar "
              "Development Foundation. Roadmap timelines are targets, not commitments.")
-    for ln in simpleSplit(notes, "Helvetica", 7.3, W - 2 * M):
+    lines = simpleSplit(notes, "Helvetica", 7.3, W - 2 * M)
+    y = 34 + len(lines) * 10
+    c.setStrokeColor(LINE)
+    c.line(M, y + 12, W - M, y + 12)
+    c.setFillColor(AMBER)
+    c.setFont("Helvetica-Bold", 7.5)
+    c.drawString(M, y, "IMPORTANT")
+    c.setFont("Helvetica", 7.3)
+    c.setFillColor(MUTED)
+    for ln in lines:
         y -= 10
         c.drawString(M, y, ln)
     c.showPage()
