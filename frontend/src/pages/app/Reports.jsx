@@ -22,7 +22,7 @@ function ExportBtn({ kind, params }) {
 }
 
 function SimpleTable({ cols, rows, render }) {
-  return <div className="overflow-x-auto"><Table><TableHeader><TableRow>{cols.map((c) => <TableHead key={c}>{c}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map(render)}</TableBody></Table>{!rows.length && <Empty title="No records in range" />}</div>;
+  return <div className="overflow-x-auto"><Table><TableHeader><TableRow>{cols.map((c, i) => <TableHead key={`${i}-${c}`}>{c}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map(render)}</TableBody></Table>{!rows.length && <Empty title="No records in range" />}</div>;
 }
 
 function ReportsTab() {

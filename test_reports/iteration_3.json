@@ -1,0 +1,27 @@
+{
+  "summary": "Light regression after code-review refactors. Backend 11/11 pytest passed: card issue returns a 4-digit last4, plus wallet challenge/connect, prepare/submit-signed with a local Keypair, and managed submit/verify. That is 2 Testnet txs (1.25 and 1.5 XLM). UI checks: Overview KPIs plus area and bar charts render. Reports charts and the Budget vs actual table (10 rows) render; monthly and budget_vs_actual CSVs download. The Expense and Payment drawers show history. The Approvals history table shows 32 rows. The Investor tour progress bar shows 6 segments and steps 1-3 ran. Found one React duplicate-key warning ('Budget') in the Reports Budget vs actual table header and fixed it. Re-run showed no duplicate-key warnings.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Reports SimpleTable header", "issue": "TableHead used key={c}. Budget vs actual cols contain 'Budget' twice, which caused a React duplicate-key warning. Fixed by testing agent: key={`${i}-${c}`}.", "selector": "[data-testid='report-bva'] thead", "priority": "LOW (fixed)"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Payment/Expense drawer (Sheet)", "issues": ["Console a11y error: 'DialogContent requires a DialogTitle'. In PaymentDrawer, SheetTitle only renders after data loads (inside {p && ...}). Render SheetTitle (or a VisuallyHidden title) outside the p guard."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_card_issue_regression.py", "/app/backend/tests/test_wallet_and_managed.py", "/app/test_reports/pytest/pytest_iter3.xml"],
+  "action_items": [
+    "Render SheetTitle unconditionally in PaymentDrawer and in any other Sheet/Dialog that gates its title on loaded data, to remove the Radix DialogTitle a11y console error"
+  ],
+  "critical_code_review_comments": [
+    "History list keys `${h.at}-${h.status}-${h.actor_name}` could still collide if the same actor records two events with the same status in the same timestamp. That is unlikely, but appending a history entry id (if one exists) would be safer.",
+    "create_card imports secrets inside the function. Move it to the module-level imports."
+  ],
+  "updated_files": ["/app/frontend/src/pages/app/Reports.jsx", "/app/backend/tests/test_card_issue_regression.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (after 1 trivial key fix)"},
+  "seed_data_creation": "Created test users agos.t3cards+clerk_test and agos.t2wallet+clerk_test with their demo workspaces. Deleted all of it afterwards (workspace-scoped docs, users, Clerk users). No other data touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Card regression: pytest tests/test_card_issue_regression.py (creates its own demo workspace). For UI, don't set localStorage agos_ws by members.find_one({'user_id': u.get('id')}): the users doc key is 'user_id', and the wrong lookup returns another user's workspace. The app safely falls back to the user's own workspace anyway. Drawer history: wait for '[data-testid=payment-drawer] ol li' because the data loads async."
+}

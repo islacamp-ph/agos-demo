@@ -135,8 +135,8 @@ function PaymentDrawer({ id, onClose, onChanged }) {
   return (
     <Sheet open={!!id} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-[520px]" data-testid="payment-drawer">
+        <SheetHeader><SheetTitle>{p ? p.recipient_name : "Payment"}</SheetTitle></SheetHeader>
         {p && <>
-          <SheetHeader><SheetTitle>{p.recipient_name}</SheetTitle></SheetHeader>
           <div className="mt-2 flex flex-wrap gap-2"><StatusBadge status={p.status} />{p.rail === "stellar_testnet" ? <ChainBadge label="Stellar Testnet" /> : <SimBadge label="Demo record · no funds move" />}{p.is_synthetic && <SimBadge />}</div>
           <div className="tnum mt-6 text-3xl font-semibold">{money(p.amount, p.currency)}</div>
           <div className="mt-1 text-sm text-muted-foreground">{p.purpose} · requested by {p.requested_by_name}</div>
