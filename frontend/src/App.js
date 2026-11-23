@@ -1,56 +1,85 @@
 import { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Show, SignIn, SignUp, useAuth } from "@clerk/react";
+import ClerkAuthProvider from "@/components/auth/ClerkAuthProvider";
+import { Toaster } from "@/components/ui/sonner";
+import { setTokenGetter } from "@/lib/api";
+import { WorkspaceProvider } from "@/context/WorkspaceContext";
+import AppShell from "@/components/agos/AppShell";
+import PublicLayout from "@/pages/public/PublicLayout";
+import Landing from "@/pages/public/Landing";
+import Roadmap from "@/pages/public/Roadmap";
+import Waitlist from "@/pages/public/Waitlist";
+import Privacy from "@/pages/public/Privacy";
+import AuthPage from "@/pages/public/AuthPage";
+import Onboarding from "@/pages/app/Onboarding";
+import Overview from "@/pages/app/Overview";
+import Expenses from "@/pages/app/Expenses";
+import Budgets from "@/pages/app/Budgets";
+import Approvals from "@/pages/app/Approvals";
+import Cards from "@/pages/app/Cards";
+import Payments from "@/pages/app/Payments";
+import StellarPage from "@/pages/app/StellarPage";
+import Reports from "@/pages/app/Reports";
+import Team from "@/pages/app/Team";
+import Settings from "@/pages/app/Settings";
+import AdminPanel from "@/pages/app/AdminPanel";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+function TokenBridge() {
+  const { getToken } = useAuth();
+  useEffect(() => { setTokenGetter(() => getToken()); }, [getToken]);
+  return null;
+}
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
+function Protected() {
   return (
-    // The marker attribute below lets the platform probe detect the stock splash — remove it with this page
-    <div data-emergent-splash>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+    <>
+      <Show when="signed-in">
+        <WorkspaceProvider><Outlet /></WorkspaceProvider>
+      </Show>
+      <Show when="signed-out"><Navigate to="/sign-in" replace /></Show>
+    </>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
+    <BrowserRouter>
+      <ClerkAuthProvider>
+        <TokenBridge />
+        <Toaster position="bottom-right" richColors />
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/roadmap" element={<Roadmap />} />
+            <Route path="/waitlist" element={<Waitlist />} />
+            <Route path="/privacy" element={<Privacy />} />
           </Route>
+          <Route path="/sign-in/*" element={<AuthPage><SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" withSignUp /></AuthPage>} />
+          <Route path="/sign-up/*" element={<AuthPage><SignUp routing="path" path="/sign-up" signInUrl="/sign-in" /></AuthPage>} />
+          <Route element={<Protected />}>
+            <Route path="/app/onboarding" element={<Onboarding />} />
+            <Route path="/app" element={<AppShell />}>
+              <Route index element={<Navigate to="/app/overview" replace />} />
+              <Route path="overview" element={<Overview />} />
+              <Route path="expenses" element={<Expenses />} />
+              <Route path="budgets" element={<Budgets />} />
+              <Route path="approvals" element={<Approvals />} />
+              <Route path="cards" element={<Cards />} />
+              <Route path="payments" element={<Payments />} />
+              <Route path="stellar" element={<StellarPage />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="team" element={<Team />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="roadmap" element={<Roadmap inApp />} />
+              <Route path="admin" element={<AdminPanel />} />
+            </Route>
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </div>
+      </ClerkAuthProvider>
+    </BrowserRouter>
   );
 }
 

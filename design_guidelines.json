@@ -1,0 +1,400 @@
+{
+  "build_now": "Choose the smallest useful set of features from the user's scope that delivers the fastest aha moment through a complete core workflow, honoring explicit user priorities.",
+  "app_meta": {
+    "product_name": "AGOS",
+    "legal_entity": "ISLA Ventures Inc.",
+    "tagline": "Business Finance in Motion",
+    "etymology": "Agos is the Filipino word for 'flow' — embodying seamless liquidity, transparent treasury movements, and dynamic financial velocity for Philippine enterprises.",
+    "target_audience": "Philippine startups, scaleups, and MSMEs (founders, finance managers, operations leads, department heads).",
+    "supported_currencies": {
+      "primary": "PHP (Philippine Peso, ₱)",
+      "secondary": ["USD ($)", "XLM (Stellar Lumens)", "USDC (Stellar Asset)"]
+    },
+    "compliance_and_simulation_notes": {
+      "simulated_cards_disclaimer": "Demo Card — Not Valid for Payment",
+      "no_third_party_brand_marks": "No Visa/Mastercard logos or trademarks anywhere on virtual or physical card interfaces.",
+      "synthetic_data_indicator": "Synthetic demo datasets prominently flagged with 'Simulated' badge.",
+      "stellar_testnet_indicator": "Real Stellar Testnet transactions flagged with live 'Stellar Testnet' badge and direct Horizon testnet block explorer links."
+    }
+  },
+  "research_and_context": {
+    "user_archetypes": [
+      {
+        "actor": "Maria Santos (Founder & CEO)",
+        "context": "Early-to-growth startup executive needing top-level cash flow visibility, fast dual-currency runway tracking, and quick high-value approval sweeps on mobile/laptop.",
+        "primary_jobs": ["Review cash position & burn rate", "Approve expenses > ₱50,000", "Monitor cross-border treasury / supplier payments via Stellar Testnet"]
+      },
+      {
+        "actor": "Carlos Reyes (Head of Finance & Operations)",
+        "context": "Day-to-day controller reconciling expenses against BIR-ready categorization, issuing department cards, managing departmental budgets, and approving payables.",
+        "primary_jobs": ["Process approval queue", "Reconcile synthetic and live bank/crypto transactions", "Enforce budget guardrails and issue freeze/limit changes on corporate cards"]
+      },
+      {
+        "actor": "Bea Cruz (Marketing Lead / Employee Cardholder)",
+        "context": "Spends on digital ads (Meta, Google), SaaS subscriptions (Figma, Notion), and local vendor deliveries; needs clear spend limits and instant receipt upload.",
+        "primary_jobs": ["View card details & available limit", "Submit expense claim with official receipt (OR)", "Request budget increases"]
+      }
+    ],
+    "locale_and_philippines_context": {
+      "currency_symbol": "₱",
+      "currency_code": "PHP",
+      "number_format": "en-PH (₱1,250,000.00)",
+      "date_format": "DD MMM YYYY (e.g., 24 Nov 2025)",
+      "local_tax_and_compliance": "Official Receipt (OR) upload field, BIR 2307 Withholding Tax status tracking, and 12% VAT breakdown indicator."
+    },
+    "tradeoff_analysis": {
+      "workspace_structure": "Left Collapsible Navigation Sidebar (240px expanded / 64px collapsed) with contextual breadcrumbs and top action bar vs. purely Horizontal Top Navigation. Sidebar chosen because financial operators switch rapidly across 10 distinct sub-modules (Expenses, Budgets, Approvals, Cards, Payments, Stellar, Reports, etc.) and require persistent vertical grouping without horizontal crowding on typical 1366px-1920px finance laptop screens.",
+      "detail_view_pattern": "Slide-over Drawer (Inspector Panel, 480px width) for transaction, card, and approval details vs. Full-page Navigation. Drawer chosen because finance controllers perform batch inspection: reviewing 15 expenses in succession while keeping the table filter state, scroll position, and active pagination intact.",
+      "visual_personality_evaluation": {
+        "direction_a": "Cool Slate & Electric Cyan (Crypto-first, stark black backgrounds, high neon contrast). Rejected: feels too speculative and unregulated for Philippine enterprise CFOs.",
+        "direction_b_selected": "Sovereign Maritime & Clean Alpine (Deep Pacific Navy, Crisp White surfaces, Subtle Sea-Mist Canvas, and Muted Cyan for Stellar Testnet). Selected: projects institutional trust, modern fintech elegance (reminiscent of Brex/Mercury), high-legibility tabular figures, and clear separation between fiat Philippine Peso operations and Stellar blockchain rails."
+      }
+    }
+  },
+  "visual_system": {
+    "color_model": "OKLCH (All specified coordinates strictly verified in sRGB gamut and meeting WCAG 2.1 AA/AAA contrast targets)",
+    "tokens": {
+      "surfaces": {
+        "canvas": "oklch(0.985 0.002 240)",
+        "surface": "oklch(1.000 0.000 0)",
+        "surface_subtle": "oklch(0.965 0.003 240)",
+        "surface_elevated": "oklch(1.000 0.000 0)",
+        "surface_dark": "oklch(0.180 0.025 250)",
+        "border_subtle": "oklch(0.910 0.004 240)",
+        "border_strong": "oklch(0.820 0.008 240)"
+      },
+      "typography_colors": {
+        "text_primary": "oklch(0.180 0.015 240)",
+        "text_secondary": "oklch(0.420 0.015 240)",
+        "text_muted": "oklch(0.540 0.015 240)",
+        "text_on_brand": "oklch(0.990 0.000 0)",
+        "text_on_dark": "oklch(0.960 0.000 0)"
+      },
+      "brand": {
+        "primary": "oklch(0.350 0.070 245)",
+        "primary_hover": "oklch(0.300 0.070 245)",
+        "primary_subtle": "oklch(0.950 0.018 240)"
+      },
+      "stellar_network": {
+        "accent": "oklch(0.500 0.070 215)",
+        "accent_subtle": "oklch(0.950 0.020 215)",
+        "badge_text": "oklch(0.320 0.045 215)"
+      },
+      "semantics": {
+        "success": "oklch(0.520 0.100 145)",
+        "success_subtle": "oklch(0.960 0.020 145)",
+        "success_text": "oklch(0.300 0.075 145)",
+        "warning": "oklch(0.650 0.090 75)",
+        "warning_subtle": "oklch(0.960 0.025 75)",
+        "warning_text": "oklch(0.360 0.075 75)",
+        "danger": "oklch(0.520 0.130 25)",
+        "danger_subtle": "oklch(0.965 0.015 25)",
+        "danger_text": "oklch(0.360 0.100 25)",
+        "info": "oklch(0.500 0.070 250)",
+        "info_subtle": "oklch(0.955 0.018 250)",
+        "info_text": "oklch(0.320 0.065 250)"
+      }
+    },
+    "typography": {
+      "family": "IBM Plex Sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "family_mono": "IBM Plex Mono, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+      "font_rationale": "IBM Plex Sans brings a humanist, sober, slightly narrow geometry engineered explicitly for high-density financial interfaces and institutional clarity. Tabular figures ('tnum') prevent numeral jitter across columns.",
+      "rules": [
+        "Use IBM Plex Sans for all interface copy, metrics, currency amounts, dates, and account numbers.",
+        "Use font-variant-numeric: tabular-nums on all financial amounts, balance counters, and transaction tables.",
+        "Right-align all currency and quantitative columns.",
+        "IBM Plex Mono is strictly reserved for machine artefacts: Stellar public keys (G...), transaction hashes (tx hash), API secret keys, and webhook endpoints.",
+        "No display or decorative fonts inside the business dashboard. Font weights: 400 for body/secondary labels, 500 for row primary titles and table headers, 600 for card headlines and view page titles."
+      ],
+      "scale": {
+        "micro": { "size": "11px", "line_height": "14px", "weight": "500", "letter_spacing": "0.02em" },
+        "caption": { "size": "12px", "line_height": "16px", "weight": "400", "letter_spacing": "0" },
+        "body_sm": { "size": "13px", "line_height": "18px", "weight": "400", "letter_spacing": "0" },
+        "body": { "size": "14px", "line_height": "20px", "weight": "400", "letter_spacing": "0" },
+        "body_medium": { "size": "14px", "line_height": "20px", "weight": "500", "letter_spacing": "0" },
+        "subheading": { "size": "16px", "line_height": "22px", "weight": "600", "letter_spacing": "-0.005em" },
+        "title": { "size": "20px", "line_height": "26px", "weight": "600", "letter_spacing": "-0.01em" },
+        "metric_lg": { "size": "28px", "line_height": "34px", "weight": "600", "letter_spacing": "-0.015em" },
+        "display": { "size": "36px", "line_height": "42px", "weight": "600", "letter_spacing": "-0.02em" }
+      }
+    },
+    "spatial_system": {
+      "base_unit": "4px",
+      "density": "Compact to medium for tabular data; generous breathing room for high-level KPI cards and marketing landing pages.",
+      "radii": {
+        "sm": "4px",
+        "md": "6px",
+        "lg": "10px",
+        "xl": "14px",
+        "pill": "9999px"
+      },
+      "shadows": {
+        "subtle": "0 1px 2px 0 rgba(15, 23, 42, 0.05)",
+        "card": "0 1px 3px 0 rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.04)",
+        "drawer": "-4px 0 16px -2px rgba(15, 23, 42, 0.08)",
+        "modal": "0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05)"
+      }
+    }
+  },
+  "navigation_architecture": {
+    "structure": "Hybrid Layout with persistent Left Vertical Sidebar for Authenticated App and Sticky Minimalist Top Bar for Public/Marketing Pages.",
+    "top_level_navigation": {
+      "public_destinations": [
+        { "id": "landing", "label": "Product", "path": "/" },
+        { "id": "vision_roadmap", "label": "Vision & Roadmap", "path": "/roadmap" },
+        { "id": "technology", "label": "Technology & Stellar", "path": "/technology" },
+        { "id": "about", "label": "About ISLA", "path": "/about" },
+        { "id": "waitlist", "label": "Join Waitlist", "path": "/waitlist" },
+        { "id": "demo_cta", "label": "Explore AGOS Demo", "path": "/app/overview", "primary_button": true }
+      ],
+      "app_sidebar_destinations": [
+        { "id": "overview", "label": "Overview", "icon": "LayoutDashboard", "badge": null },
+        { "id": "expenses", "label": "Expenses", "icon": "Receipt", "badge": "14" },
+        { "id": "budgets", "label": "Budgets", "icon": "PieChart", "badge": null },
+        { "id": "approvals", "label": "Approvals", "icon": "CheckSquare", "badge": "3 Pending", "badge_tone": "warning" },
+        { "id": "cards", "label": "Cards", "icon": "CreditCard", "badge": "Simulated" },
+        { "id": "payments", "label": "Payments", "icon": "Send", "badge": null },
+        { "id": "stellar", "label": "Stellar", "icon": "Zap", "badge": "Testnet", "badge_tone": "stellar" },
+        { "id": "reports", "label": "Reports", "icon": "BarChart3", "badge": null },
+        { "id": "team", "label": "Team", "icon": "Users", "badge": null },
+        { "id": "settings", "label": "Settings", "icon": "Settings", "badge": null }
+      ]
+    },
+    "mobile_adaptation": "On screens under 768px, sidebar turns into a slide-over sheet triggered by top hamburger icon. Quick tab bar at the bottom provides instant thumb access to Overview, Expenses, Approvals, and Cards."
+  },
+  "views_and_workflows": {
+    "public_views": [
+      {
+        "id": "landing_page",
+        "title": "AGOS Landing — Business Finance in Motion",
+        "sections": [
+          {
+            "id": "hero",
+            "headline": "Business Finance in Motion.",
+            "subheadline": "The unified financial operating system for modern Philippine startups and growing enterprises. Multi-currency treasury, automated corporate spending, real-time budgets, and instant cross-border liquidity powered by Stellar.",
+            "ctas": [
+              { "label": "Explore AGOS Demo", "target": "/app/overview", "variant": "primary" },
+              { "label": "Join the Waitlist", "target": "/waitlist", "variant": "secondary" }
+            ],
+            "social_proof": "Designed under ISLA Ventures Inc. for the next generation of Philippine founders."
+          },
+          {
+            "id": "feature_pillars",
+            "title": "Autonomous Financial Architecture",
+            "pillars": [
+              {
+                "title": "Manage",
+                "status_label": "Live",
+                "status_tone": "success",
+                "description": "Consolidated PHP operating cash, live burn-rate forecasting, and bank reconciliation across local accounts."
+              },
+              {
+                "title": "Control",
+                "status_label": "Live",
+                "status_tone": "success",
+                "description": "Issue simulated company virtual cards with strict vendor limits, multi-tier approvals, and automated BIR receipt collection."
+              },
+              {
+                "title": "Pay",
+                "status_label": "Simulated",
+                "status_tone": "warning",
+                "description": "Batch disbursements to local Philippine banks (InstaPay/PESONet simulated) and regional SaaS suppliers."
+              },
+              {
+                "title": "Connect",
+                "status_label": "Live on Testnet",
+                "status_tone": "stellar",
+                "description": "Direct Stellar Testnet cross-border corridors for sub-second settlement in XLM and USDC with cryptographic verification."
+              },
+              {
+                "title": "Understand",
+                "status_label": "Planned",
+                "status_tone": "info",
+                "description": "AI-assisted runway projections, scenario modeling, and automated tax withholding (BIR 2307) scheduling."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "vision_and_roadmap",
+        "title": "Vision & 4-Phase Roadmap",
+        "phases": [
+          {
+            "phase": "Phase 1: Foundation (Current MVP)",
+            "status": "In Production / Testnet",
+            "milestones": [
+              "Synthetic multi-currency ledger & PHP KPI dashboard",
+              "Simulated corporate cards engine with lock/freeze controls",
+              "Expense submission, multi-tier approval workflow & BIR OR tags",
+              "Stellar Testnet wallet integration & public Horizon verification"
+            ]
+          },
+          {
+            "phase": "Phase 2: Local Rails & Embedded Banking",
+            "status": "Q2 2026",
+            "milestones": [
+              "Direct BSP-regulated digital bank integrations for PHP disbursements",
+              "InstaPay & PESONet live automated reconciliation",
+              "Physical card distribution for Manila & Cebu headquarters"
+            ]
+          },
+          {
+            "phase": "Phase 3: Programmable Treasury & Stellar Anchors",
+            "status": "Q4 2026",
+            "milestones": [
+              "Licensed Stellar Anchor on-ramp for PHP stablecoins (PHPC)",
+              "Multi-signature treasury vaults for corporate board disbursements",
+              "Sub-cent remittance costs for overseas SaaS contractors"
+            ]
+          },
+          {
+            "phase": "Phase 4: Autonomous Capital & Enterprise Suite",
+            "status": "2027",
+            "milestones": [
+              "Automated invoice factoring & revenue-based working capital lines",
+              "Enterprise ERP integrations (NetSuite, SAP, Xero, QuickBooks)",
+              "Full compliance automation for BIR electronic invoicing (EIS)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "waitlist_and_admin",
+        "title": "Early Access Waitlist & Admin Oversight",
+        "components": [
+          "Public intake form capturing Company Name, Work Email, Team Size (1-10, 11-50, 51-200, 200+), Monthly Spend Bracket, and Stellar/Cross-border interest.",
+          "Instant confirmation screen with position badge and unique referral token.",
+          "Protected Admin View: tab for ISLA Ventures operators to review submissions, filter by spend bracket, and mark accounts as 'Approved for Sandbox Demo' or 'Contacted'."
+        ]
+      }
+    ],
+    "app_core_views": [
+      {
+        "id": "overview",
+        "title": "Financial Operating Overview",
+        "purpose": "Provides the primary actor with instant situational awareness of liquidity, 30-day burn rate, upcoming payables, and pending approvals.",
+        "layout_structure": {
+          "top_bar": "Entity selector ('ISLA Ventures Inc. - HQ'), PHP/USD/XLM balance toggle, 'Simulated Data' badge, 'New Payment' quick-action button.",
+          "kpi_ribbon": [
+            { "label": "Total Available Liquidity", "primary_val": "₱14,842,500.00", "secondary_val": "~$265,044.00 USD", "delta": "+12.4% vs last mo" },
+            { "label": "30-Day Net Burn", "primary_val": "₱1,620,400.00", "status_indicator": "Runway: 9.1 Months", "tone": "neutral" },
+            { "label": "Simulated Card Spend", "primary_val": "₱482,150.00", "sub": "78% of monthly limit", "tone": "warning" },
+            { "label": "Stellar Testnet Treasury", "primary_val": "45,000.00 XLM", "sub": "12,500 USDC | Verified on Horizon", "tone": "stellar" }
+          ],
+          "chart_section": {
+            "title": "Cash Inflow vs. Operating Burn (2025 - 2026)",
+            "type": "Interactive Dual-Axis Area & Bar Chart",
+            "intervals": ["7D", "30D", "90D", "YTD"]
+          },
+          "action_split": {
+            "left_col": "Pending Approvals Queue Preview (3 urgent items with 1-click Approve/Reject)",
+            "right_col": "Recent Multi-Rail Activity (Interleaved PHP bank transfers, simulated card debits, and Stellar testnet payments)"
+          }
+        }
+      },
+      {
+        "id": "expenses",
+        "title": "Corporate Expenses & Receipts",
+        "purpose": "Audit, filter, and reconcile all company expenditures with BIR-ready tax categorizations.",
+        "features": [
+          "Interactive filters: Rail (All, Card, Bank, Stellar), Status (Pending OR, Approved, Reconciled), Department (Eng, Ops, Mktg, Exec), Date Range.",
+          "Table columns: Transaction Date, Merchant/Recipient, Employee, Card/Account, Department, Category (BIR classification), Tax Flag (VAT / Withholding 2307), Amount (PHP with tabular numerals), Receipt Status, Action.",
+          "Inspector Drawer (480px): opens on row click to show receipt image thumbnail, OCR parsed data, GL code, employee notes, and audit timeline.",
+          "Action bar: Export CSV, Upload Missing Receipt modal, Bulk Reconcile."
+        ]
+      },
+      {
+        "id": "budgets",
+        "title": "Departmental & Project Budgets",
+        "purpose": "Real-time visibility into envelope budgeting, hard spending limits, and burn velocity.",
+        "features": [
+          "Budget Cards Grid: Engineering SaaS, Growth & Marketing, Manila Office Ops, Cross-Border Contractor Pool.",
+          "Progress bars with 3-tier color coding: <70% Teal/Navy, 70-89% Amber warning, >=90% Red alert.",
+          "Budget drilldown: List of linked simulated cards and active approval policies under each envelope.",
+          "Action: 'Create New Budget Envelope' modal with automated limit freeze thresholds."
+        ]
+      },
+      {
+        "id": "approvals",
+        "title": "Multi-Tier Approval Queue",
+        "purpose": "High-velocity inbox for founders and finance heads to inspect and authorize out-of-policy or high-ticket payments.",
+        "features": [
+          "Priority categorization: Urgent (>₱100k or vendor due in <24h), Routine, and Past Approved/Rejected history.",
+          "Review Card: Requesting employee, Department, Vendor name, Item description, Attached quote/invoice, Rule violation flag (e.g. 'Exceeds standard ₱20,000 SaaS limit').",
+          "One-click batch operations: 'Approve All Selected' or 'Reject with Reason'.",
+          "Approval threshold matrix viewer in contextual side drawer."
+        ]
+      },
+      {
+        "id": "cards",
+        "title": "Corporate Cards (Simulated Engine)",
+        "purpose": "Issue and supervise virtual and physical cards for founders and team members without third-party marks.",
+        "features": [
+          "Strict Compliance Notice: Every card surface prominently displays 'Demo Card — Not Valid for Payment' watermark with zero Visa/Mastercard logos.",
+          "Simulated Card Visual: Modern obsidian-matte and ocean-gradient finishes, masked card number (•••• •••• •••• 4291), cardholder name, expiry, dynamic CVV button, and company badge 'AGOS · ISLA'.",
+          "Card controls: Instant Lock/Unlock switch, Spend Limit adjust slider, Merchant category restrictions (e.g. Block Travel/Entertainment, Allow SaaS only).",
+          "Create Card Modal: Multi-use Card vs. Single-use Burner Card, assigned employee, PHP monthly allowance."
+        ]
+      },
+      {
+        "id": "payments",
+        "title": "Payments & Disbursements",
+        "purpose": "Create and track vendor payments, contractor payouts, and batch disbursements.",
+        "features": [
+          "Transfer Modal: Select Source (PHP Treasury Account, USD Pool, or Stellar Testnet Wallet).",
+          "Recipient directory: Saved Philippine bank accounts (BDO, BPI, UnionBank, GCash, Maya) with automated account validation simulation.",
+          "Fee transparency box: Shows ₱0 internal transfer fee, simulated ₱15 InstaPay fee, or 0.00001 XLM network fee."
+        ]
+      },
+      {
+        "id": "stellar",
+        "title": "Stellar Testnet Treasury Corridor",
+        "purpose": "Showcase real cryptographic financial infrastructure on Stellar Horizon Testnet for sub-second cross-border settlement.",
+        "features": [
+          "Live Wallet Card: Public Key (e.g., GA5Z...4D2M) with copy button and QR code, Live Testnet Balance (XLM & USDC), Friendbot 10,000 XLM faucet trigger.",
+          "Send Payment Corridor: Input destination public key, amount, memo text/hash, and submit live transaction to Stellar Horizon Testnet API.",
+          "Cryptographic Verification Table: Real-time ledger sequence numbers, transaction hash (tx_hash), operation fee (stroops), and direct external link to Stellar Laboratory / Horizon testnet block explorer.",
+          "Educational Callout: 'Why Stellar for Philippine MSMEs' explaining sub-second settlement, fractions-of-a-cent fees, and 24/7 cross-border liquidity without SWIFT delays."
+        ]
+      },
+      {
+        "id": "reports_and_reconciliation",
+        "title": "Financial Reports & Smart Reconciliation",
+        "purpose": "Generate executive-level cash flow statements, P&L estimates, and unmatched transaction reconciliation.",
+        "features": [
+          "Reconciliation workbench: Split view showing synthetic bank feed on left and uploaded receipts/ERP ledger entries on right with match confidence score (e.g. '98% Match by Amount & Date').",
+          "One-click 'Accept Match' or 'Create Adjustment Entry'.",
+          "Exportable BIR 2307 Withholding Tax summary and Monthly Spend by Cost Center (PDF/CSV)."
+        ]
+      },
+      {
+        "id": "team_and_settings",
+        "title": "Team Roles & Governance Settings",
+        "features": [
+          "Role-based access control (RBAC): Owner/Founder, Finance Admin, Department Manager, Employee Cardholder.",
+          "Security policies: Enforce 2FA, biometric authentication for transactions >₱50,000, Webhook integrations."
+        ]
+      }
+    ]
+  },
+  "interactive_states_and_motion": {
+    "loading_states": "Subtle skeleton pulses using surface_subtle background; table rows show 4 placeholder lines with shimmer.",
+    "empty_states": "Contextual financial empty states with encouraging action button (e.g., 'No pending approvals — your team is completely unblocked.').",
+    "validation_rules": {
+      "monetary_inputs": "Must parse valid numeric input; negative values rejected; warns if amount exceeds available envelope budget.",
+      "stellar_public_keys": "56-character alphanumeric starting with 'G', memo limited to 28 characters for text memo."
+    },
+    "feedback_banners": "Non-blocking floating toast notifications on lower-right (desktop) or top-center (mobile) with auto-dismiss after 4 seconds."
+  },
+  "accessibility_and_responsive": {
+    "accessibility_standards": "WCAG 2.1 AA Compliance with 4.5:1 minimum contrast for normal text and 3:1 for large graphical elements.",
+    "keyboard_navigation": "Visible focus ring (2px solid brand_primary with 2px offset) across all interactive table rows, tabs, and form controls.",
+    "responsive_breakpoints": {
+      "mobile": "375px - 767px (Single-column layout, bottom navigation bar, card summary views)",
+      "tablet": "768px - 1023px (Compact sidebar, horizontal scrolling tables with sticky first column)",
+      "desktop": "1024px - 1439px (Default desktop dashboard layout with persistent sidebar and inspector drawers)",
+      "wide_desktop": "1440px+ (Max container constraint 1600px with centered alignment to avoid excessive whitespace)"
+    }
+  }
+}
