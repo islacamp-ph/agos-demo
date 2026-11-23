@@ -68,6 +68,7 @@ export default function Landing() {
               </Button>
             </div>
             <p className="mt-8 text-xs text-slate-400">MVP demonstration · synthetic business data · simulated cards · real Stellar Testnet transactions</p>
+            <Link to="/tour" className="mt-3 inline-flex items-center gap-1.5 text-sm text-cyan-200 underline-offset-4 hover:underline" data-testid="hero-tour-link">Take the 2-minute investor tour <ArrowRight className="h-3.5 w-3.5" /></Link>
           </div>
           <PreviewCard />
         </div>

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { Show, SignIn, SignUp, useAuth } from "@clerk/react";
 import ClerkAuthProvider from "@/components/auth/ClerkAuthProvider";
 import { Toaster } from "@/components/ui/sonner";
@@ -25,6 +25,7 @@ import Reports from "@/pages/app/Reports";
 import Team from "@/pages/app/Team";
 import Settings from "@/pages/app/Settings";
 import AdminPanel from "@/pages/app/AdminPanel";
+import TourStart from "@/pages/app/TourStart";
 
 function TokenBridge() {
   const { getToken } = useAuth();
@@ -33,12 +34,14 @@ function TokenBridge() {
 }
 
 function Protected() {
+  const { pathname, search } = useLocation();
+  const back = encodeURIComponent(pathname + search);
   return (
     <>
       <Show when="signed-in">
         <WorkspaceProvider><Outlet /></WorkspaceProvider>
       </Show>
-      <Show when="signed-out"><Navigate to="/sign-in" replace /></Show>
+      <Show when="signed-out"><Navigate to={`/sign-in?redirect_url=${back}`} replace /></Show>
     </>
   );
 }
@@ -59,6 +62,7 @@ function App() {
           <Route path="/sign-in/*" element={<AuthPage><SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" withSignUp /></AuthPage>} />
           <Route path="/sign-up/*" element={<AuthPage><SignUp routing="path" path="/sign-up" signInUrl="/sign-in" /></AuthPage>} />
           <Route element={<Protected />}>
+            <Route path="/tour" element={<TourStart />} />
             <Route path="/app/onboarding" element={<Onboarding />} />
             <Route path="/app" element={<AppShell />}>
               <Route index element={<Navigate to="/app/overview" replace />} />

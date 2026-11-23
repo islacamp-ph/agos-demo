@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Check, Play, X, ExternalLink, Presentation, Loader2 } from "lucide-react";
+import { Check, Play, X, ExternalLink, Presentation, Loader2, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import http, { errMsg } from "@/lib/api";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -26,13 +26,33 @@ function useElapsed(start) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+export const TOUR_URL = () => `${window.location.origin}/tour`;
+
+export function copyTourLink() {
+  navigator.clipboard?.writeText(TOUR_URL()).then(
+    () => toast.success("Tour link copied — anyone who opens it gets their own private demo"),
+    () => toast.message(TOUR_URL()),
+  );
+}
+
 export function TourLauncher() {
   const { info } = useWorkspace();
   const [open, setOpen] = useState(false);
-  if (!info?.workspace?.is_demo || info.acting_as_persona || info.role !== "owner") return null;
+  const [params, setParams] = useSearchParams();
+  const eligible = info?.workspace?.is_demo && !info.acting_as_persona && info.role === "owner";
+  useEffect(() => {
+    if (params.get("tour") !== "1" || !info) return;
+    if (eligible) setOpen(true);
+    params.delete("tour");
+    setParams(params, { replace: true });
+  }, [params, setParams, info, eligible]);
+  if (!eligible) return null;
   return (
     <>
-      <Button size="sm" variant="outline" className="hidden rounded-full sm:inline-flex" onClick={() => setOpen(true)} data-testid="investor-tour-btn"><Presentation className="mr-1.5 h-4 w-4" />Investor tour</Button>
+      <div className="hidden items-center sm:flex">
+        <Button size="sm" variant="outline" className="rounded-l-full rounded-r-none border-r-0" onClick={() => setOpen(true)} data-testid="investor-tour-btn"><Presentation className="mr-1.5 h-4 w-4" />Investor tour</Button>
+        <Button size="sm" variant="outline" className="rounded-l-none rounded-r-full px-2.5" onClick={copyTourLink} title="Copy shareable tour link" data-testid="copy-tour-link-btn"><Link2 className="h-4 w-4" /></Button>
+      </div>
       {open && createPortal(<DemoTour onClose={() => setOpen(false)} />, document.body)}
     </>
   );
@@ -104,7 +124,7 @@ function DemoTour({ onClose }) {
     <div className="fixed bottom-5 right-5 z-50 w-[380px] max-w-[calc(100vw-2.5rem)] rounded-2xl border bg-white shadow-2xl fade-up" data-testid="investor-tour-panel">
       <div className="flex items-center justify-between rounded-t-2xl bg-[hsl(var(--navy-ink))] px-5 py-3 text-white">
         <div className="text-sm font-semibold">Investor tour · expense to settlement</div>
-        <div className="flex items-center gap-3"><span className="tnum text-xs text-slate-300" data-testid="tour-timer">{elapsed}</span><button onClick={onClose} data-testid="tour-close-btn"><X className="h-4 w-4" /></button></div>
+        <div className="flex items-center gap-3"><span className="tnum text-xs text-slate-300" data-testid="tour-timer">{elapsed}</span><button onClick={copyTourLink} title="Copy shareable tour link" data-testid="tour-panel-copy-link"><Link2 className="h-4 w-4" /></button><button onClick={onClose} data-testid="tour-close-btn"><X className="h-4 w-4" /></button></div>
       </div>
       <ol className="flex gap-1 px-5 pt-4">{STEPS.map((st, i) => <li key={st.title} className={`h-1 flex-1 rounded-full ${i < step ? "bg-emerald-500" : i === step ? "bg-[hsl(var(--primary))]" : "bg-slate-200"}`} />)}</ol>
       <div className="px-5 pb-5 pt-4">
