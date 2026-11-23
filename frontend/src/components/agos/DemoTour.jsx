@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Check, Play, X, ExternalLink, Presentation, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import http, { errMsg } from "@/lib/api";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import { signWithFreighter } from "@/lib/wallet";
+import { signWithFreighter, ensureFreighter } from "@/lib/wallet";
 import { today, newKey, shortKey } from "@/lib/format";
 
 const STEPS = [
@@ -32,7 +33,7 @@ export function TourLauncher() {
   return (
     <>
       <Button size="sm" variant="outline" className="hidden rounded-full sm:inline-flex" onClick={() => setOpen(true)} data-testid="investor-tour-btn"><Presentation className="mr-1.5 h-4 w-4" />Investor tour</Button>
-      {open && <DemoTour onClose={() => setOpen(false)} />}
+      {open && createPortal(<DemoTour onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }
@@ -63,6 +64,7 @@ function DemoTour({ onClose }) {
       return { paymentId: pay.id, walletMode: acct.account.mode === "wallet" };
     },
     async (c) => {
+      if (c.walletMode) await ensureFreighter();
       await http.post(`/payments/${c.paymentId}/decision`, { action: "approve", note: "Approved during investor tour" });
       const key = newKey();
       let pay;
@@ -87,7 +89,7 @@ function DemoTour({ onClose }) {
     try {
       const out = await actions[step](ctx);
       setCtx((c) => ({ ...c, ...(out || {}) }));
-      nav(STEPS[Math.min(step + 1, STEPS.length - 1)].path);
+      nav(STEPS[step].path);
       bump();
       setStep(step + 1);
     } catch (e) {

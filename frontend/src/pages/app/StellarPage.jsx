@@ -64,7 +64,7 @@ export default function StellarPage() {
         </Panel>
         <Panel title="How the workflow runs" testid="stellar-howto">
           <ol className="space-y-3 text-sm text-slate-600">
-            {["Request an international payment with a destination G… address", "An authorized approver approves it internally", "An owner or finance manager explicitly confirms", "AGOS signs server-side and submits to Stellar Testnet", "Hash and ledger are stored; Verify re-checks Horizon at any time"].map((s, i) => (
+            {["Request an international payment with a destination G… address", "An authorized approver approves it internally", "An owner or finance manager explicitly confirms", "AGOS signs server-side, or your connected wallet signs, then it is submitted to Stellar Testnet", "Hash and ledger are stored; Verify re-checks Horizon at any time"].map((s, i) => (
               <li key={s} className="flex gap-3"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--stellar-subtle))] text-[11px] font-semibold text-[hsl(var(--stellar))]">{i + 1}</span>{s}</li>
             ))}
           </ol>

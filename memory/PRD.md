@@ -10,6 +10,11 @@ User choices: Emergent-managed sign-in (Google + email/password); each signed-in
 - Frontend React + Clerk (@clerk/react), shadcn, recharts. Public pages under src/pages/public, app under src/pages/app, shell in components/agos.
 - MongoDB collections: users, workspaces, members, expenses, budgets, cards, card_transactions, payments (stellar sub-doc), stellar_accounts, stellar_recipients, files, audit_logs, waitlist.
 
+## Implemented (2026-11-23, iteration 2)
+- Wallet Connect: Freighter (@stellar/freighter-api 6.0.1). Ownership proven by signing a non-submittable challenge tx; workspace account mode "wallet" (no secret stored). Payments: prepare (unsigned XDR, status awaiting_signature) → wallet signs → submit-signed (hash + signature verified) → confirmed; cancel-signature; owner disconnect archives the account. Managed mode unchanged.
+- Investor tour: 6-step guided panel (demo workspaces, real owner) — expense submit → approve → budgets → Stellar payment → settle → verify with explorer link and timer.
+- Tested: iteration_2 backend 8/8; wallet path tested with local keypairs (real Freighter extension not testable in automation).
+
 ## Implemented (2026-11-23)
 - All modules above; real Stellar Testnet payments verified (confirmed ledger, idempotent resubmit, Verify vs Horizon, startup refresh of pending tx).
 - Testing iteration 1: backend 35/35 core + edge findings fixed (FM limit 100 XLM for Stellar payments, card budget_id validation, invited-owner removal, submit requires approval), frontend core flows pass; admin reachable without a workspace; reports nav hidden for employees.

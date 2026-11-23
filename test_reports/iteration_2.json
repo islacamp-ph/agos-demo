@@ -1,0 +1,46 @@
+{
+  "summary": "Tested the new Freighter wallet-connect flow (backend, with local stellar_sdk keypairs standing in for Freighter), a regression of the managed Stellar flow, the Stellar page UI, the Investor tour (run end to end twice) and the wallet-mode Payments drawer. Backend: 8 out of 8 new pytest tests pass, using 3 real Testnet transactions. Frontend: everything that was requested works now, after two small frontend fixes made by the tester. (1) The Investor tour panel was rendered mostly above the top of the screen, so its title, timer and close button could not be seen. (2) In wallet mode, signing without Freighter installed stuck on 'Waiting for wallet…' forever. Both are fixed and retested.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/stellar/account/disconnect", "issue": "Returns 409 while any payment is awaiting_signature, and there is no endpoint to cancel or revert a prepared payment. If the wallet is lost or uninstalled, the owner can never disconnect it (the only workaround is signing the payment). Add a cancel-signature action that moves the payment back to approved, or have disconnect ignore awaiting_signature payments whose tx validity window (120s) has expired."},
+      {"endpoint": "POST /api/stellar/demo-recipient", "issue": "Any member, including employees, can call this repeatedly. It triggers Friendbot with no rate limit."},
+      {"endpoint": "POST /api/workspaces/demo", "issue": "Creates a new demo workspace on every call (the test user now has 3). Confirm this is intended."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DemoTour panel", "issue": "FIXED by tester. The panel is position:fixed but was rendered inside the sticky header, which uses backdrop-blur-xl and therefore becomes the containing block. The panel was pinned to the header and pushed mostly above the viewport: only the CTA button was visible and tour-close-btn was off screen (Playwright: 'element is outside of the viewport'). The fix renders DemoTour through createPortal to document.body; it now sits at the bottom-right, fully visible.", "selector": "[data-testid=investor-tour-panel]", "priority": "HIGH"},
+      {"component": "lib/wallet.js signWithFreighter", "issue": "FIXED by tester. @stellar/freighter-api 6.0.1 only times out connection-status and public-key requests; signTransaction never resolves when the extension is missing. The Payments confirm dialog therefore stayed on 'Waiting for wallet…' forever, and the tour's wallet branch would hang the same way. The fix adds an isConnected() check before signTransaction. The toast 'Freighter wallet extension not detected…' now appears.", "selector": "[data-testid=stellar-confirm-btn]", "priority": "HIGH"},
+      {"component": "Payments drawer (PaymentActions)", "issue": "walletMode comes from a separate useData('/stellar/account') per drawer, and that endpoint calls Horizon, so it loads slowly. For about a second an approved payment in a wallet workspace shows 'Confirm & submit to Stellar' (the managed flow). Clicking it then hits the managed endpoint, which returns 409. Read the account mode from a shared context, or disable the button until the account has loaded.", "selector": "[data-testid=stellar-submit-btn]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Wallet sign in the Payments drawer", "issue": "/stellar/prepare runs before Freighter is checked, so a payment moves to awaiting_signature even when no wallet is available. Check isConnected before calling prepare.", "affected_selectors": ["[data-testid=stellar-confirm-btn]"]},
+      {"flow": "Investor tour step 2", "issue": "After 'Submit expense' the tour immediately navigates to /app/budgets, so the investor never sees the new Paolo expense appear in the Expenses list. The API confirms the expense was created for Paolo Mendoza (2450 PHP) and then approved. Consider staying on /app/expenses for a moment, or highlighting the new row.", "affected_selectors": ["[data-testid=tour-next-btn]"]}
+    ],
+    "design_issues": [
+      {"screen": "Stellar page", "issues": ["In wallet mode the 'How the workflow runs' step 4 still says 'AGOS signs server-side', and the page subtitle still talks about server-side encrypted keys. Make this copy depend on the account mode."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_wallet_and_managed.py", "/app/test_reports/pytest/pytest_wallet.xml"],
+  "action_items": [
+    "Add a cancel/revert for awaiting_signature payments, or let disconnect ignore expired prepared transactions, so a lost wallet can still be disconnected",
+    "Payments drawer: do not show the managed 'Confirm & submit to Stellar' label before the account mode has loaded; read the mode from shared state",
+    "Check isConnected before calling /stellar/prepare in the wallet flow (Payments and DemoTour)",
+    "Make the Stellar page 'How the workflow runs' text and subtitle depend on the account mode",
+    "Optional: let the tour show the new expense in the Expenses list before moving on; rate-limit or restrict /stellar/demo-recipient to managers"
+  ],
+  "critical_code_review_comments": [
+    "routes_payments.py is 503 lines; the wallet and Stellar account routes could move to their own routes_stellar.py",
+    "wallet_connect: the challenge is marked used after verification with a non-atomic check. A race test (6 parallel calls) gave one 200 and five 410s, and the unique index on stellar_accounts.workspace_id prevents duplicate accounts, so this is OK. A conditional update would be cleaner.",
+    "Challenge transaction uses sequence 0 (Account(pk,-1)), so it cannot be submitted to the network. Good. Wrong signer, a valid signature on a different transaction, reuse, expiry (more than 5 minutes) and an unknown challenge_id are all rejected correctly.",
+    "submit-signed checks env.hash == the prepared tx_hash, so a tampered amount is rejected (422) and only the prepared transaction can be submitted. Good."
+  ],
+  "updated_files": ["/app/frontend/src/components/agos/DemoTour.jsx", "/app/frontend/src/lib/wallet.js", "/app/backend/tests/test_wallet_and_managed.py"],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% of the requested checks after the 2 tester fixes; 1 open medium UI race"},
+  "seed_data_creation": "Test users agos.t2wallet+clerk_test@example.com and agos.t2ui+clerk_test@example.com, each with demo workspaces. The t2ui user has 3 workspaces: 528efb70 (tour run twice, managed account), f1d28c4e, and f4141810 (wallet mode, with 2 payments left in awaiting_signature that cannot be disconnected; this is the bug above). Payments use TEST_ names. There is no delete-payment or delete-workspace endpoint, so nothing was removed. Per test_credentials, these test users and workspaces are cleaned up after each run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && pytest tests/test_wallet_and_managed.py (keep everything in one class: xdist loadscope with shared state). Each run makes 2 Testnet txs (1.25 and 1.5 XLM). Freighter is simulated by signing the challenge or prepare XDR with a local Keypair. UI: python tests/mk_ticket.py <email>, open /sign-in?__clerk_ticket=..., and set localStorage 'agos_ws' to pick a workspace. Persona switch: persona-switcher plus role=option.",
+  "rca of the issue": "Tour panel off-screen: backdrop-filter on <header> makes it the containing block for position:fixed descendants. Fixed with createPortal. Wallet hang: freighter-api's postMessage bridge only sets a 2s timeout for REQUEST_CONNECTION_STATUS and REQUEST_PUBLIC_KEY; SUBMIT_TRANSACTION waits indefinitely without the extension. Fixed by calling isConnected first."
+}

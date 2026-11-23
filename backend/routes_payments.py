@@ -435,7 +435,7 @@ async def account_transactions(ctx: dict = Depends(ws_ctx)):
 
 
 @router.post("/stellar/demo-recipient")
-async def demo_recipient(ctx: dict = Depends(ws_ctx)):
+async def demo_recipient(ctx: dict = Depends(require_roles(*MANAGERS))):
     pub, _ = stellar.new_keypair()  # secret is discarded; this address is receive-only for demos
     try:
         fb = await stellar.friendbot(pub)
@@ -447,6 +447,22 @@ async def demo_recipient(ctx: dict = Depends(ws_ctx)):
 
 
 # ---------------- Connected wallet (Freighter) ----------------
+async def _revert_signature(pid: str, note: str) -> bool:
+    res = await db.payments.update_one({"id": pid, "status": "awaiting_signature"}, {
+        "$set": {"status": "approved", "stellar.status": "cancelled", "stellar.tx_hash": None, "stellar.unsigned_xdr": None},
+        "$push": {"history": {"status": "approved", "actor_name": "AGOS Workflow", "actor_member_id": None, "at": now_iso(), "note": note}}})
+    return res.modified_count == 1
+
+
+@router.post("/payments/{pid}/stellar/cancel-signature")
+async def cancel_signature(pid: str, ctx: dict = Depends(require_roles(*MANAGERS))):
+    await _get_payment(ctx, pid)
+    if not await _revert_signature(pid, f"Wallet signing cancelled by {ctx['actor_name']}"):
+        raise HTTPException(status_code=409, detail="Payment is not awaiting a wallet signature")
+    await audit(ctx, "stellar.signature_cancelled", "payment", pid)
+    return await _get_payment(ctx, pid)
+
+
 class ChallengeIn(BaseModel):
     public_key: str = Field(min_length=56, max_length=56)
 
@@ -495,6 +511,9 @@ async def disconnect_account(ctx: dict = Depends(require_roles("owner"))):
     a = await db.stellar_accounts.find_one({"workspace_id": ctx["ws_id"]}, P)
     if not a:
         raise HTTPException(status_code=404, detail="No Stellar account")
+    expired = (datetime.now(timezone.utc) - timedelta(seconds=stellar.TX_VALIDITY_SECONDS + 30)).isoformat()
+    for p in await db.payments.find({"workspace_id": ctx["ws_id"], "status": "awaiting_signature", "stellar.prepared_at": {"$lt": expired}}, P).to_list(200):
+        await _revert_signature(p["id"], "Signing window expired; reverted on disconnect")
     if await db.payments.count_documents({"workspace_id": ctx["ws_id"], "status": {"$in": ["submitting", "awaiting_signature", "pending_verification"]}}):
         raise HTTPException(status_code=409, detail="Finish or verify in-flight Stellar payments first")
     await db.stellar_accounts_archive.insert_one({**a, "archived_at": now_iso(), "archived_by": ctx["actor_name"]})

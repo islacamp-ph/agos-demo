@@ -14,7 +14,7 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 import { money, fmtDate, fmtDateTime, shortKey, newKey } from "@/lib/format";
 import { PageHeader, StatusBadge, SimBadge, ChainBadge, Empty } from "@/components/agos/ui";
 import DecideButtons from "@/components/agos/DecideButtons";
-import { signWithFreighter } from "@/lib/wallet";
+import { signWithFreighter, ensureFreighter } from "@/lib/wallet";
 
 function NewPayment({ open, setOpen, type, onSaved }) {
   const blank = { recipient_name: "", recipient_bank: "", recipient_account_last4: "", destination_address: "", asset_code: "XLM", amount: "", purpose: "" };
@@ -79,11 +79,16 @@ function StellarActions({ p, onChanged }) {
     if (s === "confirmed") toast.success("Confirmed on the Stellar Testnet ledger"); else if (s === "failed") toast.error(pay.stellar?.last_error || "Submission failed"); else toast.message("Submitted — verify to reconcile");
   };
   const submitWallet = async () => {
+    await ensureFreighter();
     const { data: prep } = await http.post(`/payments/${p.id}/stellar/prepare`, { confirm: true, idempotency_key: key });
     if (!prep.xdr) return report(prep.payment);
     const signed = await signWithFreighter(prep.xdr, prep.network_passphrase, prep.address);
     const { data } = await http.post(`/payments/${p.id}/stellar/submit-signed`, { signed_xdr: signed });
     report(data.payment);
+  };
+  const cancelSig = async () => {
+    setBusy(true);
+    try { await http.post(`/payments/${p.id}/stellar/cancel-signature`); toast.success("Back to approved"); onChanged(); } catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); }
   };
   const submit = async () => {
     setBusy(true);
@@ -102,7 +107,8 @@ function StellarActions({ p, onChanged }) {
   };
   return (
     <div className="flex flex-wrap gap-2">
-      {isManager && ["approved", "failed", "awaiting_signature"].includes(p.status) && <Button size="sm" onClick={() => { setAck(false); setConfirm(true); }} className="bg-[hsl(var(--stellar))] hover:bg-[hsl(190_60%_28%)]" data-testid="stellar-submit-btn"><Send className="mr-1 h-3.5 w-3.5" />{walletMode ? "Confirm & sign with wallet" : p.status === "failed" ? "Retry on Stellar" : "Confirm & submit to Stellar"}</Button>}
+      {isManager && acct && ["approved", "failed", "awaiting_signature"].includes(p.status) && <Button size="sm" onClick={() => { setAck(false); setConfirm(true); }} className="bg-[hsl(var(--stellar))] hover:bg-[hsl(190_60%_28%)]" data-testid="stellar-submit-btn"><Send className="mr-1 h-3.5 w-3.5" />{walletMode ? "Confirm & sign with wallet" : p.status === "failed" ? "Retry on Stellar" : "Confirm & submit to Stellar"}</Button>}
+      {p.status === "awaiting_signature" && isManager && <Button size="sm" variant="ghost" disabled={busy} onClick={cancelSig} data-testid="cancel-signature-btn">Cancel signing</Button>}
       {p.stellar?.tx_hash && p.status !== "awaiting_signature" && <Button size="sm" variant="outline" disabled={busy} onClick={verify} data-testid="stellar-verify-btn"><ShieldCheck className="mr-1 h-3.5 w-3.5" />Verify transaction</Button>}
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
