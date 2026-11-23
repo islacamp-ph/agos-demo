@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api")
 P = {"_id": 0}
 log = logging.getLogger("agos.stellar")
 MAX_XLM = Decimal("1000")
+FM_XLM_LIMIT = 100.0
 
 
 class PaymentIn(BaseModel):
@@ -108,6 +109,8 @@ async def decide_payment(pid: str, body: Decision, ctx: dict = Depends(require_r
     if p["status"] != "pending_approval":
         raise HTTPException(status_code=409, detail="Payment is not pending approval")
     err = can_decide(ctx, p["amount_php"], p["requested_by"])
+    if not err and p["currency"] == "XLM" and ctx["role"] == "finance_manager" and p["amount"] > FM_XLM_LIMIT:
+        err = f"Stellar payments above {FM_XLM_LIMIT:g} XLM require owner approval"
     if err:
         raise HTTPException(status_code=403, detail=err)
     if body.action == "reject" and not body.note.strip():
@@ -191,6 +194,8 @@ async def stellar_submit(pid: str, body: SubmitIn, ctx: dict = Depends(require_r
         raise HTTPException(status_code=409, detail="Only international payments settle on Stellar")
     if p["status"] in ("submitting", "pending_verification", "confirmed"):
         return {"payment": p, "idempotent": True}
+    if p["status"] not in ("approved", "failed"):
+        raise HTTPException(status_code=409, detail="Payment must be approved before submission")
     acct = await db.stellar_accounts.find_one({"workspace_id": ctx["ws_id"]}, P)
     if not acct:
         raise HTTPException(status_code=409, detail="Create the workspace Stellar Testnet account first")

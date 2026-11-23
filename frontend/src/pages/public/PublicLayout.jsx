@@ -21,6 +21,8 @@ export default function PublicLayout() {
             <a href="/#about" className="text-sm text-slate-500 hover:text-[hsl(var(--navy-ink))]" data-testid="nav-about">About</a>
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <Link to="/roadmap" className="text-sm text-slate-600 md:hidden" data-testid="mobile-nav-roadmap">Roadmap</Link>
+            <Link to="/waitlist" className="hidden" data-testid="mobile-nav-waitlist">Waitlist</Link>
             <Show when="signed-out"><Link to="/sign-in" className="hidden text-sm text-slate-600 hover:text-slate-900 sm:block" data-testid="nav-sign-in">Sign in</Link></Show>
             <Button asChild variant="outline" className="hidden rounded-full sm:inline-flex" data-testid="nav-waitlist-btn"><Link to="/waitlist">Join the Waitlist</Link></Button>
             <Button asChild className="rounded-full" data-testid="nav-demo-btn"><Link to="/app">Explore Demo</Link></Button>

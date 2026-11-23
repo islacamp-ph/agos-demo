@@ -136,7 +136,7 @@ async def patch_member(member_id: str, body: MemberPatch, ctx: dict = Depends(re
     upd = body.model_dump(exclude_none=True)
     if upd.get("status") == "active" and target["status"] == "invited":
         upd.pop("status")
-    losing_owner = target["role"] == "owner" and (upd.get("role", "owner") != "owner" or upd.get("status") == "removed")
+    losing_owner = target["role"] == "owner" and target["status"] == "active" and (upd.get("role", "owner") != "owner" or upd.get("status") == "removed")
     if losing_owner and await db.members.count_documents({"workspace_id": ctx["ws_id"], "role": "owner", "status": "active"}) <= 1:
         raise HTTPException(status_code=409, detail="A workspace must keep at least one owner")
     await db.members.update_one({"id": member_id}, {"$set": upd})

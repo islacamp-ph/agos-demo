@@ -1,0 +1,52 @@
+{
+  "summary": "Tested AGOS backend and frontend end to end. Backend: a 35-case pytest suite (test_agos_api.py) passed 35/35. It covers public pages, waitlist, auth 401s, platform admin 403/200, workspace isolation, the expense lifecycle with personas, the FM threshold and self-approval rules, receipts (png ok, txt 415), budgets and utilization, cards (freeze/declined/posted), domestic payments, Stellar (account, demo recipient, validation 422s, a real Testnet tx confirmed with idempotent resubmit and verify matches_request=true), reconciliation, reports and CSV exports, team (last owner 409), settings and audit log. The edge suite (test_agos_edge.py) passed 4 of 6 and found 2 real defects; it also confirmed a third gap (FM can decide any XLM payment). Frontend (Playwright) passed: landing/roadmap/waitlist/privacy, 375px with no horizontal overflow, signed-out /app redirects to /sign-in, onboarding create-empty and open-demo, workspace switcher, expense create/draft/submit/approve/mark-paid with history and receipt upload, CSV export, persona switch to Employee (approve buttons hidden, own expenses only, no new-budget button), card freeze/unfreeze and simulated decline toast, domestic payment showing 'Recorded (Demo)' with a 'no bank transfer' note, an international Stellar UI flow (a real 0.75 XLM tx, ledger 5880927, stellar.expert testnet link, Verify, still there after reload), Stellar page balance, Reports charts and CSVs, the reconciliation 'Verified on-chain' row with toggle to Reconciled and CSV, team invite, settings save, audit log, and the admin panel for a super_admin.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/payments/{id}/decision (international)", "issue": "International XLM payments are stored with amount_php=0, so can_decide never applies the finance-manager approval_threshold. An FM can approve any Stellar payment up to the 1,000 XLM cap. Verified: an FM persona decided a 999 XLM request with HTTP 200."},
+      {"endpoint": "POST /api/cards", "issue": "budget_id is not validated against the workspace. A budget id from another user's workspace is accepted and returns 200, a cross-tenant reference."},
+      {"endpoint": "PATCH /api/team/{id}", "issue": "Removing an INVITED owner fails with 409 'must keep at least one owner' when the workspace has only 1 active owner. losing_owner should only apply when target.status == 'active'."},
+      {"endpoint": "POST /api/payments/{id}/stellar/submit", "issue": "On a payment still in pending_approval, the endpoint returns 200 {idempotent:true} instead of 409 'not approved'. It also sets stellar to {} on that payment (line 197) as a side effect."},
+      {"endpoint": "backend.err.log", "issue": "There is one historical 500 PathNotViable error ('Cannot create field idempotency_key in element {stellar: null}') from a localhost request. It looks like the run before the current fix (stellar set to {} first). It did not reproduce in any of my runs."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Reports > Reconciliation table", "issue": "Evidence text for declined card txns ('Exceeds remaining card limit (₱1,000.00 available)') overflows into the Amount column. Needs truncate or wrap.", "selector": "[data-testid^='recon-row-']", "priority": "LOW"},
+      {"component": "Platform admin access", "issue": "A super_admin or platform_admin with no workspace is always redirected to /app/onboarding, so /app/admin is unreachable until they create a workspace.", "selector": "/app/admin", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Expenses form/filters, Reports date range, Budgets month", "issues": ["These use the native browser date and month pickers (input type=date/month, shown as mm/dd/yyyy) instead of the shadcn Calendar/Popover."]},
+      {"screen": "Public header at 375px", "issues": ["No hamburger menu. The Product/Technology/Roadmap/About and Join the Waitlist nav links are hidden on mobile, with only 'Explore Demo' visible."]},
+      {"screen": "App top bar persona switcher", "issues": ["The 'Test Owner — Owner / Administrator' label is truncated ('Owner / Adminis'), and the role label is repeated right beside it."]},
+      {"screen": "Overview (empty workspace)", "issues": ["The monthly chart shows a ₱0–₱4 y-axis with a flat line instead of an empty state. The Department spending card is blank with no empty-state text."]},
+      {"screen": "Employee persona nav", "issues": ["Reports is shown in the nav but only renders 'available to owners and finance managers'. Consider hiding it for employees."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_agos_api.py", "/app/backend/tests/test_agos_edge.py", "/app/backend/tests/conftest.py", "/app/backend/tests/mk_ticket.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Apply the FM approval threshold to international payments: convert XLM to a PHP-equivalent or add an XLM threshold.",
+    "Validate cards.budget_id belongs to ctx ws_id (POST /api/cards).",
+    "patch_member: only count losing_owner when target is an active owner.",
+    "stellar_submit: return 409 when status is not approved/failed instead of 200 idempotent, and avoid mutating stellar on unapproved payments.",
+    "Let platform admins reach /app/admin without a workspace (or give them a standalone admin route).",
+    "Fix the reconciliation Evidence column overflow.",
+    "Replace native date/month inputs with shadcn Calendar date pickers.",
+    "Add a mobile nav menu to the public header."
+  ],
+  "critical_code_review_comments": [
+    "routes_payments.create_payment sets amount_php=0 for XLM, which breaks threshold routing and the PHP totals in reports for international payments.",
+    "routes_finance.create_card stores budget_id unchecked. BudgetIn.department is not validated against workspace.departments.",
+    "routes_finance._expense_query does `import re` inside the function. Move it to the module top.",
+    "routes_finance.py is 492 lines and growing. Consider splitting expenses, budgets and cards into separate modules.",
+    "Owner self-approval is allowed by design, but there is no audit flag marking self-approved items."
+  ],
+  "updated_files": ["/app/backend/tests/conftest.py", "/app/backend/tests/test_agos_api.py", "/app/backend/tests/test_agos_edge.py", "/app/backend/tests/mk_ticket.py"],
+  "success_rate": {"backend": "95% (39/41 incl. edge cases; core suite 35/35)", "frontend": "92% (all core flows pass; admin-without-workspace blocked; minor design issues)"},
+  "seed_data_creation": "Test Clerk users: agos.t1userb+clerk_test (demo + 'TEST_Empty Co' workspaces), agos.t1padmin+clerk_test (platform_role set to platform_admin in DB), agos.t1super+clerk_test (super_admin, 'TEST_Super WS'), and agos.t1new<ts>/agos.t1demo<ts>+clerk_test (onboarding UI). The owner demo workspace gained TEST_ expenses, a TEST_Card, TEST_ payments (3 small real Testnet tx: 1.5 XLM, 0.75 XLM, plus a 999 XLM request that was rejected and never sent) and 2 recon toggles. The TEST_UI Member was removed and the waitlist test rows were deleted.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && pytest tests/test_agos_api.py tests/test_agos_edge.py. NOTE: test_stellar_e2e submits one real 1.5 XLM Testnet tx per run. UI login: python tests/mk_ticket.py <email> then open /sign-in?__clerk_ticket=<ticket> (one ticket per browser session). The expense form's 'Submit for approval' switch defaults to ON. The Payments page defaults to the International tab; click tab-domestic for domestic payments. Two edge tests (card cross-ws budget, remove invited owner) are expected to fail until fixed.",
+  "test_credentials": "From /app/memory/test_credentials.md: agos.owner+clerk_test@example.com, tokens via token_for()."
+}

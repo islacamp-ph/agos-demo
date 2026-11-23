@@ -95,7 +95,7 @@ function ReconTab() {
             <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground">{r.category}</TableCell>
             <TableCell><StatusBadge status={r.approval_status} /></TableCell><TableCell className="text-xs capitalize">{String(r.payment_status).replace(/_/g, " ")}</TableCell>
             <TableCell><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${RS_TONE[r.reconciliation_status] || "bg-slate-100 text-slate-700"}`}>{RS_LABEL[r.reconciliation_status] || r.reconciliation_status}</span></TableCell>
-            <TableCell className="max-w-[170px] text-xs">{r.explorer ? <a href={r.explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono-plex text-[hsl(var(--stellar))] underline">{shortKey(r.evidence, 6)}<ExternalLink className="h-3 w-3" /></a> : <span className="truncate text-muted-foreground">{r.evidence}</span>}</TableCell>
+            <TableCell className="max-w-[170px] text-xs">{r.explorer ? <a href={r.explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono-plex text-[hsl(var(--stellar))] underline">{shortKey(r.evidence, 6)}<ExternalLink className="h-3 w-3" /></a> : <span className="block max-w-[170px] truncate text-muted-foreground" title={r.evidence}>{r.evidence}</span>}</TableCell>
             <TableCell className="tnum whitespace-nowrap text-right">{money(r.amount, r.currency)}</TableCell>
             <TableCell>{r.can_toggle && <Switch checked={r.reconciliation_status === "reconciled"} onCheckedChange={(v) => toggle(r, v)} data-testid={`recon-toggle-${r.id}`} />}</TableCell>
           </TableRow>

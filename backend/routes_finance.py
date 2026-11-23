@@ -425,6 +425,8 @@ async def create_card(body: CardIn, ctx: dict = Depends(require_roles(*MANAGERS)
     m = await db.members.find_one({"id": body.member_id, "workspace_id": ctx["ws_id"], "status": {"$ne": "removed"}}, P)
     if not m:
         raise HTTPException(status_code=404, detail="Member not found")
+    if body.budget_id and not await db.budgets.find_one({"id": body.budget_id, "workspace_id": ctx["ws_id"]}):
+        raise HTTPException(status_code=404, detail="Budget not found")
     card = {"id": new_id(), "workspace_id": ctx["ws_id"], "member_id": m["id"], "member_name": m["name"],
             "nickname": body.nickname, "last4": f"{random.randint(0, 9999):04d}", "spending_limit": body.spending_limit,
             "status": "active", "budget_id": body.budget_id, "expiry": "12/28", "is_simulated": True, "created_at": now_iso()}

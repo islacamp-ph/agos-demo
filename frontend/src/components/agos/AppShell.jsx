@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { NavLink, Outlet, Navigate, Link } from "react-router-dom";
+import { NavLink, Outlet, Navigate, Link, useLocation } from "react-router-dom";
+import AdminPanel from "@/pages/app/AdminPanel";
 import { UserButton } from "@clerk/react";
 import { LayoutDashboard, Receipt, PieChart, CheckSquare, CreditCard, Send, Orbit, BarChart3, Users, Settings, Menu, Map, ShieldCheck, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -16,7 +17,7 @@ const NAV = [
 ];
 
 function NavList({ onNavigate }) {
-  const { me } = useWorkspace();
+  const { me, isManager } = useWorkspace();
   const item = ([path, label, Icon]) => (
     <NavLink key={path} to={`/app/${path}`} onClick={onNavigate} data-testid={`nav-${path}`}
       className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] transition-colors ${isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
@@ -28,7 +29,7 @@ function NavList({ onNavigate }) {
   const admin = me && ["super_admin", "platform_admin"].includes(me.platform_role);
   return (
     <nav className="flex flex-col gap-0.5">
-      {NAV.map(item)}
+      {NAV.filter(([p]) => p !== "reports" || isManager).map(item)}
       <div className="my-3 h-px bg-white/10" />
       {item(["roadmap", "Vision & Roadmap", Map])}
       {admin && item(["admin", "Platform Admin", ShieldCheck])}
@@ -68,7 +69,7 @@ function PersonaSwitcher() {
     <div className="hidden items-center gap-2 lg:flex">
       <span className="text-xs text-muted-foreground">Viewing as</span>
       <Select value={info.member.id} onValueChange={setActAs}>
-        <SelectTrigger className="h-9 w-[230px] bg-white" data-testid="persona-switcher"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-9 w-[280px] bg-white" data-testid="persona-switcher"><SelectValue /></SelectTrigger>
         <SelectContent>
           {info.personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} — {ROLE_LABEL[p.role]}</SelectItem>)}
         </SelectContent>
@@ -80,9 +81,14 @@ function PersonaSwitcher() {
 export default function AppShell() {
   const { me, info, error } = useWorkspace();
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
   if (error && !me) return <div className="p-10 text-sm text-red-700" data-testid="app-error">{error}</div>;
   if (!me) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>;
-  if (!me.workspaces.length) return <Navigate to="/app/onboarding" replace />;
+  if (!me.workspaces.length) {
+    const admin = ["super_admin", "platform_admin"].includes(me.platform_role);
+    if (admin && pathname === "/app/admin") return <div className="mx-auto max-w-[1400px] px-4 py-10 md:px-8"><AdminPanel /></div>;
+    return <Navigate to="/app/onboarding" replace />;
+  }
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 md:block"><Sidebar /></aside>
@@ -96,7 +102,7 @@ export default function AppShell() {
           {info?.workspace?.is_demo && <SimBadge label="Demo workspace · synthetic data" />}
           <div className="ml-auto flex items-center gap-4">
             <PersonaSwitcher />
-            {info && <span className="hidden text-xs text-muted-foreground xl:inline" data-testid="current-role">{ROLE_LABEL[info.role]}</span>}
+            {info && !info.personas?.length && <span className="hidden text-xs text-muted-foreground xl:inline" data-testid="current-role">{ROLE_LABEL[info.role]}</span>}
             <UserButton />
           </div>
         </header>
