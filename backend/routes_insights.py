@@ -2,11 +2,14 @@ from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from core import db, ws_ctx, require_roles, audit, MANAGERS
 from routes_finance import COUNTED, budgets_with_usage, csv_response, this_month
+from routes_payments import _get_payment, refresh_stellar
+from pitch_pdf import build_pitch_pdf
 import stellar_service as stellar
 
 router = APIRouter(prefix="/api")
@@ -248,3 +251,26 @@ async def toggle_reconciled(item_id: str, body: ReconIn, ctx: dict = Depends(req
         raise HTTPException(status_code=409, detail="Item is not eligible for reconciliation")
     await audit(ctx, "reconciliation." + ("marked" if body.reconciled else "unmarked"), body.kind, item_id)
     return {"ok": True}
+
+
+@router.get("/payments/{pid}/pitch-summary")
+async def pitch_summary(pid: str, ctx: dict = Depends(ws_ctx), expense_id: Optional[str] = None,
+                        duration: Optional[int] = Query(None, ge=1, le=7200)):
+    p = await _get_payment(ctx, pid)
+    if p["status"] != "confirmed" or not (p.get("stellar") or {}).get("tx_hash"):
+        raise HTTPException(status_code=409, detail="A pitch summary needs a payment confirmed on the Stellar ledger")
+    try:
+        await refresh_stellar(p)
+        p = await _get_payment(ctx, pid)
+    except Exception:
+        pass  # fall back to the last stored verification
+    expense = None
+    if expense_id:
+        scope = {} if ctx["role"] in MANAGERS else {"member_id": ctx["member"]["id"]}
+        expense = await db.expenses.find_one({"id": expense_id, "workspace_id": ctx["ws_id"], **scope}, P)
+    kpis = (await dashboard(ctx, 6, None))["kpis"]
+    pdf = build_pitch_pdf(ctx["ws"], kpis, p, expense, duration, stellar.tx_links(p["stellar"]["tx_hash"])["explorer"])
+    await audit(ctx, "pitch_summary.downloaded", "payment", pid)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="agos-pitch-summary.pdf"'})
+

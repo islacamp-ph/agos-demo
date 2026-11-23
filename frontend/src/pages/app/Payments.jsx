@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, ExternalLink, ShieldCheck, Send, RefreshCw, Wand2 } from "lucide-react";
+import { Plus, ExternalLink, ShieldCheck, Send, RefreshCw, Wand2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import http, { useData, errMsg } from "@/lib/api";
+import http, { useData, errMsg, downloadFile } from "@/lib/api";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { money, fmtDate, fmtDateTime, shortKey, newKey } from "@/lib/format";
 import { PageHeader, StatusBadge, SimBadge, ChainBadge, Empty } from "@/components/agos/ui";
@@ -109,6 +109,8 @@ function StellarActions({ p, onChanged }) {
     <div className="flex flex-wrap gap-2">
       {isManager && acct && ["approved", "failed", "awaiting_signature"].includes(p.status) && <Button size="sm" onClick={() => { setAck(false); setConfirm(true); }} className="bg-[hsl(var(--stellar))] hover:bg-[hsl(190_60%_28%)]" data-testid="stellar-submit-btn"><Send className="mr-1 h-3.5 w-3.5" />{walletMode ? "Confirm & sign with wallet" : p.status === "failed" ? "Retry on Stellar" : "Confirm & submit to Stellar"}</Button>}
       {p.status === "awaiting_signature" && isManager && <Button size="sm" variant="ghost" disabled={busy} onClick={cancelSig} data-testid="cancel-signature-btn">Cancel signing</Button>}
+      {p.status === "confirmed" && <Button size="sm" variant="outline" onClick={() => downloadFile(`/payments/${p.id}/pitch-summary`, {}, "agos-pitch-summary.pdf").catch((e) => toast.error(errMsg(e)))} data-testid="pitch-pdf-btn"><FileDown className="mr-1 h-3.5 w-3.5" />Pitch summary PDF</Button>}
+
       {p.stellar?.tx_hash && p.status !== "awaiting_signature" && <Button size="sm" variant="outline" disabled={busy} onClick={verify} data-testid="stellar-verify-btn"><ShieldCheck className="mr-1 h-3.5 w-3.5" />Verify transaction</Button>}
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>

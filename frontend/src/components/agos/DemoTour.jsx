@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Check, Play, X, ExternalLink, Presentation, Loader2, Link2 } from "lucide-react";
+import { Check, Play, X, ExternalLink, Presentation, Loader2, Link2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import http, { errMsg } from "@/lib/api";
+import http, { errMsg, downloadFile } from "@/lib/api";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { signWithFreighter, ensureFreighter } from "@/lib/wallet";
 import { today, newKey, shortKey } from "@/lib/format";
@@ -101,7 +101,7 @@ function DemoTour({ onClose }) {
     },
     async (c) => {
       const { data } = await http.post(`/payments/${c.paymentId}/stellar/verify`);
-      return { verified: data.status === "confirmed" && data.stellar?.verification?.matches_request, ledger: data.stellar?.ledger };
+      return { verified: data.status === "confirmed" && data.stellar?.verification?.matches_request, ledger: data.stellar?.ledger, duration: Math.max(1, Math.round((Date.now() - start) / 1000)) };
     },
   ];
 
@@ -121,6 +121,17 @@ function DemoTour({ onClose }) {
   };
 
   const done = step >= STEPS.length;
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const downloadPdf = async () => {
+    setPdfBusy(true);
+    try {
+      await downloadFile(`/payments/${ctx.paymentId}/pitch-summary`, { expense_id: ctx.expenseId, duration: ctx.duration }, "agos-pitch-summary.pdf");
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setPdfBusy(false);
+    }
+  };
   return (
     <div className="fixed bottom-5 right-5 z-50 w-[380px] max-w-[calc(100vw-2.5rem)] rounded-2xl border bg-white shadow-2xl fade-up" data-testid="investor-tour-panel">
       <div className="flex items-center justify-between rounded-t-2xl bg-[hsl(var(--navy-ink))] px-5 py-3 text-white">
@@ -135,7 +146,8 @@ function DemoTour({ onClose }) {
             <p className="mt-2 text-sm text-slate-600">Expense submitted, approved and counted in budgets; a payment approved and settled on Stellar Testnet{ctx.ledger ? ` at ledger ${ctx.ledger}` : ""}{ctx.verified ? ", verified against Horizon" : ""}.</p>
             {ctx.explorer && <a href={ctx.explorer} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm text-[hsl(var(--stellar))] underline" data-testid="tour-explorer-link">{shortKey(ctx.txHash, 8)} on explorer <ExternalLink className="h-3.5 w-3.5" /></a>}
             <p className="mt-3 text-[11px] text-muted-foreground">Testnet XLM has no monetary value; ledger confirmation does not prove fiat delivery. Expense data is synthetic.</p>
-            <Button className="mt-4 w-full" variant="outline" onClick={onClose}>Close tour</Button>
+            <Button className="mt-4 w-full" disabled={pdfBusy} onClick={downloadPdf} data-testid="tour-download-pdf-btn">{pdfBusy ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Preparing PDF…</> : <><FileDown className="mr-1.5 h-4 w-4" />Download pitch summary (PDF)</>}</Button>
+            <Button className="mt-2 w-full" variant="outline" onClick={onClose}>Close tour</Button>
           </div>
         ) : (
           <div>
