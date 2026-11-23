@@ -14,6 +14,8 @@ import { php, money, compact, monthLabel, fmtDate, shortKey } from "@/lib/format
 import { PageHeader, Panel, Kpi, StatusBadge, SimBadge, Empty } from "@/components/agos/ui";
 
 const tip = { contentStyle: { borderRadius: 10, fontSize: 12 } };
+const TICK = { fontSize: 12 };
+const BAR_RADIUS = [6, 6, 0, 0];
 
 function ExportBtn({ kind, params }) {
   return <Button size="sm" variant="ghost" onClick={() => downloadFile(`/reports/export/${kind}`, params, `agos-${kind}.csv`).catch((e) => toast.error(errMsg(e)))} data-testid={`export-${kind}-btn`}><Download className="mr-1 h-3.5 w-3.5" />CSV</Button>;
@@ -41,10 +43,10 @@ function ReportsTab() {
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <Panel title="Monthly expenses" actions={<ExportBtn kind="monthly" params={params} />} testid="report-monthly">
-          <div className="h-60"><ResponsiveContainer><BarChart data={d.monthly}><CartesianGrid vertical={false} stroke="hsl(214 16% 92%)" /><XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} /><YAxis tickFormatter={compact} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} width={60} /><Tooltip {...tip} formatter={(v) => php(v)} labelFormatter={monthLabel} /><Bar dataKey="amount" fill="hsl(212 52% 28%)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div>
+          <div className="h-60"><ResponsiveContainer><BarChart data={d.monthly}><CartesianGrid vertical={false} stroke="hsl(214 16% 92%)" /><XAxis dataKey="month" tickFormatter={monthLabel} tick={TICK} axisLine={false} tickLine={false} /><YAxis tickFormatter={compact} tick={TICK} axisLine={false} tickLine={false} width={60} /><Tooltip {...tip} formatter={(v) => php(v)} labelFormatter={monthLabel} /><Bar dataKey="amount" fill="hsl(212 52% 28%)" radius={BAR_RADIUS} /></BarChart></ResponsiveContainer></div>
         </Panel>
         <Panel title="Department spending" actions={<ExportBtn kind="departments" params={params} />} testid="report-departments">
-          <div className="h-60"><ResponsiveContainer><BarChart data={d.departments}><CartesianGrid vertical={false} stroke="hsl(214 16% 92%)" /><XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} /><YAxis tickFormatter={compact} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} width={60} /><Tooltip {...tip} formatter={(v) => php(v)} /><Bar dataKey="amount" fill="hsl(190 55% 38%)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div>
+          <div className="h-60"><ResponsiveContainer><BarChart data={d.departments}><CartesianGrid vertical={false} stroke="hsl(214 16% 92%)" /><XAxis dataKey="name" tick={TICK} axisLine={false} tickLine={false} /><YAxis tickFormatter={compact} tick={TICK} axisLine={false} tickLine={false} width={60} /><Tooltip {...tip} formatter={(v) => php(v)} /><Bar dataKey="amount" fill="hsl(190 55% 38%)" radius={BAR_RADIUS} /></BarChart></ResponsiveContainer></div>
         </Panel>
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
@@ -56,7 +58,7 @@ function ReportsTab() {
         </Panel>
       </div>
       <Panel title="Budget vs actual" actions={<ExportBtn kind="budget_vs_actual" params={params} />} testid="report-bva">
-        <SimpleTable cols={["Budget", "Month", "Budget", "Actual", "Variance", "Used"]} rows={d.budget_vs_actual} render={(r, i) => <TableRow key={i}><TableCell>{r.name}</TableCell><TableCell>{monthLabel(r.period)}</TableCell><TableCell className="tnum">{php(r.budget)}</TableCell><TableCell className="tnum">{php(r.actual)}</TableCell><TableCell className={`tnum ${r.variance < 0 ? "text-red-700" : ""}`}>{php(r.variance)}</TableCell><TableCell className="tnum">{r.utilization}%</TableCell></TableRow>} />
+        <SimpleTable cols={["Budget", "Month", "Budget", "Actual", "Variance", "Used"]} rows={d.budget_vs_actual} render={(r) => <TableRow key={`${r.name}-${r.period}-${r.scope}`}><TableCell>{r.name}</TableCell><TableCell>{monthLabel(r.period)}</TableCell><TableCell className="tnum">{php(r.budget)}</TableCell><TableCell className="tnum">{php(r.actual)}</TableCell><TableCell className={`tnum ${r.variance < 0 ? "text-red-700" : ""}`}>{php(r.variance)}</TableCell><TableCell className="tnum">{r.utilization}%</TableCell></TableRow>} />
       </Panel>
       <Panel title="Payment history" actions={<ExportBtn kind="payments" params={params} />} testid="report-payments">
         <SimpleTable cols={["Date", "Recipient", "Rail", "Status", "Amount"]} rows={d.payments} render={(r) => <TableRow key={r.id}><TableCell>{fmtDate(r.date)}</TableCell><TableCell>{r.recipient} {r.is_synthetic && <SimBadge />}</TableCell><TableCell className="text-xs">{r.rail === "stellar_testnet" ? "Stellar Testnet" : "Domestic (demo)"}</TableCell><TableCell><StatusBadge status={r.status} /></TableCell><TableCell className="tnum">{money(r.amount, r.currency)}</TableCell></TableRow>} />

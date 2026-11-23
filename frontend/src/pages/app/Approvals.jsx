@@ -27,8 +27,8 @@ export default function Approvals() {
       <Panel title="Approval & rejection history" className="mt-6" testid="approval-history">
         <div className="overflow-x-auto"><Table>
           <TableHeader><TableRow><TableHead>When</TableHead><TableHead>Item</TableHead><TableHead>Decision</TableHead><TableHead>By</TableHead><TableHead>Note</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
-          <TableBody>{data.history.map((h, idx) => (
-            <TableRow key={idx}><TableCell className="whitespace-nowrap text-muted-foreground">{fmtDateTime(h.at)}</TableCell><TableCell><span className="capitalize text-muted-foreground">{h.kind}</span> · {h.title}</TableCell>
+          <TableBody>{data.history.map((h) => (
+            <TableRow key={`${h.kind}-${h.id}-${h.at}-${h.status}`}><TableCell className="whitespace-nowrap text-muted-foreground">{fmtDateTime(h.at)}</TableCell><TableCell><span className="capitalize text-muted-foreground">{h.kind}</span> · {h.title}</TableCell>
               <TableCell><StatusBadge status={h.status} /></TableCell><TableCell>{h.actor_name}</TableCell><TableCell className="max-w-[240px] truncate text-muted-foreground">{h.note}</TableCell>
               <TableCell className="tnum text-right">{money(h.amount, h.currency)}</TableCell></TableRow>
           ))}</TableBody>

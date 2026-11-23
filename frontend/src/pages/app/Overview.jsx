@@ -9,6 +9,9 @@ import { php, compact, money, monthLabel, fmtDate, shortKey } from "@/lib/format
 import { PageHeader, Kpi, Panel, Meter, StatusBadge, SimBadge, ChainBadge, Empty } from "@/components/agos/ui";
 
 const tip = { contentStyle: { borderRadius: 10, border: "1px solid hsl(214 16% 89%)", fontSize: 12 } };
+const TICK = { fontSize: 12 };
+const H_BAR_RADIUS = [0, 6, 6, 0];
+const BAR_MARGIN = { left: 10 };
 
 export default function Overview() {
   const { info, version } = useWorkspace();
@@ -43,8 +46,8 @@ export default function Overview() {
             <ResponsiveContainer><AreaChart data={d.monthly}>
               <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(212 52% 28%)" stopOpacity={0.25} /><stop offset="100%" stopColor="hsl(212 52% 28%)" stopOpacity={0} /></linearGradient></defs>
               <CartesianGrid stroke="hsl(214 16% 92%)" vertical={false} />
-              <XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={compact} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} width={60} />
+              <XAxis dataKey="month" tickFormatter={monthLabel} tick={TICK} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={compact} tick={TICK} axisLine={false} tickLine={false} width={60} />
               <Tooltip {...tip} formatter={(v) => php(v)} labelFormatter={monthLabel} />
               <Area dataKey="amount" stroke="hsl(212 52% 28%)" strokeWidth={2} fill="url(#g)" />
             </AreaChart></ResponsiveContainer>
@@ -52,9 +55,9 @@ export default function Overview() {
         </Panel>
         <Panel title="Department spending" testid="chart-departments">
           <div className="h-64">
-            <ResponsiveContainer><BarChart data={d.departments} layout="vertical" margin={{ left: 10 }}>
-              <XAxis type="number" hide /><YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip {...tip} formatter={(v) => php(v)} /><Bar dataKey="amount" fill="hsl(190 55% 38%)" radius={[0, 6, 6, 0]} />
+            <ResponsiveContainer><BarChart data={d.departments} layout="vertical" margin={BAR_MARGIN}>
+              <XAxis type="number" hide /><YAxis type="category" dataKey="name" width={90} tick={TICK} axisLine={false} tickLine={false} />
+              <Tooltip {...tip} formatter={(v) => php(v)} /><Bar dataKey="amount" fill="hsl(190 55% 38%)" radius={H_BAR_RADIUS} />
             </BarChart></ResponsiveContainer>
           </div>
         </Panel>

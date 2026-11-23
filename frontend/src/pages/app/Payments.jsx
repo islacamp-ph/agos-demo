@@ -165,8 +165,8 @@ function PaymentDrawer({ id, onClose, onChanged }) {
             </div>
           )}
           <div className="mt-8"><div className="mb-3 text-sm font-semibold">History</div>
-            <ol className="space-y-3 border-l pl-4">{p.history.map((h, i) => (
-              <li key={i} className="relative text-sm"><span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-[hsl(var(--primary))]" /><StatusBadge status={h.status} />
+            <ol className="space-y-3 border-l pl-4">{p.history.map((h) => (
+              <li key={`${h.at}-${h.status}-${h.actor_name}`} className="relative text-sm"><span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-[hsl(var(--primary))]" /><StatusBadge status={h.status} />
                 <div className="mt-1 text-xs text-muted-foreground">{h.actor_name} · {fmtDateTime(h.at)}</div>{h.note && <div className="text-xs">{h.note}</div>}</li>
             ))}</ol></div>
         </>}

@@ -122,8 +122,8 @@ function ExpenseDrawer({ exp, onClose, onChanged }) {
           <div className="space-y-2">{exp.receipts?.length ? exp.receipts.map((r) => <Receipt key={r.id} r={r} />) : <div className="text-xs text-muted-foreground">No receipts yet. JPG, PNG, WEBP or PDF up to 10 MB.</div>}</div>
         </div>
         <div className="mt-8"><div className="mb-3 text-sm font-semibold">Status history</div>
-          <ol className="space-y-3 border-l pl-4" data-testid="expense-history">{exp.history.map((h, i) => (
-            <li key={i} className="relative text-sm"><span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-[hsl(var(--primary))]" />
+          <ol className="space-y-3 border-l pl-4" data-testid="expense-history">{exp.history.map((h) => (
+            <li key={`${h.at}-${h.status}-${h.actor_name}`} className="relative text-sm"><span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-[hsl(var(--primary))]" />
               <div className="flex items-center gap-2"><StatusBadge status={h.status} /></div>
               <div className="mt-1 text-xs text-muted-foreground">{h.actor_name} · {fmtDateTime(h.at)}</div>{h.note && <div className="mt-0.5 text-xs">{h.note}</div>}</li>
           ))}</ol></div>

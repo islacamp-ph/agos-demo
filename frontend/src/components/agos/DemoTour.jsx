@@ -106,7 +106,7 @@ function DemoTour({ onClose }) {
         <div className="text-sm font-semibold">Investor tour · expense to settlement</div>
         <div className="flex items-center gap-3"><span className="tnum text-xs text-slate-300" data-testid="tour-timer">{elapsed}</span><button onClick={onClose} data-testid="tour-close-btn"><X className="h-4 w-4" /></button></div>
       </div>
-      <ol className="flex gap-1 px-5 pt-4">{STEPS.map((_, i) => <li key={i} className={`h-1 flex-1 rounded-full ${i < step ? "bg-emerald-500" : i === step ? "bg-[hsl(var(--primary))]" : "bg-slate-200"}`} />)}</ol>
+      <ol className="flex gap-1 px-5 pt-4">{STEPS.map((st, i) => <li key={st.title} className={`h-1 flex-1 rounded-full ${i < step ? "bg-emerald-500" : i === step ? "bg-[hsl(var(--primary))]" : "bg-slate-200"}`} />)}</ol>
       <div className="px-5 pb-5 pt-4">
         {done ? (
           <div data-testid="tour-complete">
