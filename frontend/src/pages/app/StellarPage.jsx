@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Copy, ExternalLink, Droplets, Orbit, RefreshCw } from "lucide-react";
+import { Copy, ExternalLink, Droplets, Orbit, RefreshCw, Wallet, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import http, { useData, errMsg } from "@/lib/api";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { fmtDateTime, shortKey } from "@/lib/format";
 import { PageHeader, Panel, ChainBadge, Empty, StatusBadge } from "@/components/agos/ui";
+import { connectFreighter, signWithFreighter } from "@/lib/wallet";
 
 export default function StellarPage() {
-  const { isManager, version } = useWorkspace();
+  const { isManager, isOwner, version } = useWorkspace();
   const acct = useData("/stellar/account", { v: version });
   const txs = useData(acct.data?.account ? "/stellar/transactions" : null, { v: version });
   const pays = useData("/payments", { type: "international", v: version });
@@ -21,6 +22,16 @@ export default function StellarPage() {
     try { await fn(); toast.success(msg); await acct.reload(); txs.reload(); } catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); }
   };
   const copy = () => { navigator.clipboard?.writeText(a.public_key); toast.success("Address copied"); };
+  const connectWallet = () => run(async () => {
+    const address = await connectFreighter();
+    const { data: ch } = await http.post("/stellar/wallet/challenge", { public_key: address });
+    const signed = await signWithFreighter(ch.xdr, ch.network_passphrase, address);
+    await http.post("/stellar/wallet/connect", { challenge_id: ch.challenge_id, signed_xdr: signed });
+  }, "Wallet connected and ownership verified");
+  const disconnect = () => {
+    if (!window.confirm("Disconnect this Stellar account from the workspace? Payment records and hashes are kept.")) return;
+    run(() => http.post("/stellar/account/disconnect"), "Stellar account disconnected");
+  };
   const xlm = a?.balances?.find((b) => b.asset === "XLM");
   const records = (pays.data || []).filter((p) => p.stellar?.tx_hash);
   return (
@@ -30,11 +41,14 @@ export default function StellarPage() {
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <Panel title="Workspace account" testid="stellar-account-panel">
           {!acct.data ? <div className="h-32 animate-pulse rounded bg-slate-100" /> : !a ? (
-            <Empty title="No Stellar Testnet account yet" hint="Create a Testnet account for this workspace. It is funded automatically by Stellar's Friendbot."
-              action={isManager ? <Button disabled={busy} onClick={() => run(() => http.post("/stellar/account"), "Testnet account created")} data-testid="create-stellar-account-btn">{busy ? "Creating…" : "Create Testnet account"}</Button> : <span className="text-xs text-muted-foreground">Ask an owner or finance manager to create it.</span>} />
+            <Empty title="No Stellar Testnet account yet" hint="Let AGOS hold an encrypted Testnet key and sign approved payments, or connect your own Freighter wallet so you sign every payment yourself."
+              action={isManager ? <div className="flex flex-wrap justify-center gap-2">
+                <Button disabled={busy} onClick={() => run(() => http.post("/stellar/account"), "Testnet account created")} data-testid="create-stellar-account-btn">{busy ? "Working…" : "Create AGOS-managed account"}</Button>
+                <Button variant="outline" disabled={busy} onClick={connectWallet} data-testid="connect-wallet-btn"><Wallet className="mr-1.5 h-4 w-4" />Connect Freighter wallet</Button>
+              </div> : <span className="text-xs text-muted-foreground">Ask an owner or finance manager to set it up.</span>} />
           ) : (
             <div>
-              <div className="flex flex-wrap items-center gap-2"><ChainBadge label={`Network: ${acct.data.network}`} />{a.exists === false && <StatusBadge status="unfunded" />}</div>
+              <div className="flex flex-wrap items-center gap-2"><ChainBadge label={`Network: ${acct.data.network}`} /><span className="rounded-full border px-2 py-0.5 text-[11px] font-medium text-slate-700" data-testid="stellar-account-mode">{a.mode === "wallet" ? "Your wallet · Freighter — you sign every payment" : "AGOS-managed key · encrypted server-side"}</span>{a.exists === false && <StatusBadge status="unfunded" />}</div>
               <div className="mt-5 text-xs text-muted-foreground">Public address</div>
               <div className="mt-1 flex items-start gap-2"><code className="break-all font-mono-plex text-sm" data-testid="stellar-public-key">{a.public_key}</code><button onClick={copy} className="text-slate-400 hover:text-slate-700" data-testid="copy-address-btn"><Copy className="h-4 w-4" /></button></div>
               <div className="mt-6 flex items-end gap-3"><div className="tnum text-4xl font-semibold" data-testid="stellar-balance">{xlm ? Number(xlm.balance).toLocaleString("en-US", { maximumFractionDigits: 7 }) : "0"}</div><div className="pb-1 text-sm text-muted-foreground">Testnet XLM available</div></div>
@@ -43,6 +57,7 @@ export default function StellarPage() {
                 <Button asChild variant="outline" size="sm"><a href={a.explorer} target="_blank" rel="noreferrer" data-testid="account-explorer-link">View on explorer <ExternalLink className="ml-1 h-3.5 w-3.5" /></a></Button>
                 {isManager && a.exists === false && <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => http.post("/stellar/account/fund"), "Funded by Friendbot")} data-testid="fund-account-btn"><Droplets className="mr-1 h-3.5 w-3.5" />Fund with Friendbot</Button>}
                 <Button asChild size="sm"><Link to="/app/payments" data-testid="goto-payments-btn">Create Stellar payment</Link></Button>
+                {isOwner && <Button size="sm" variant="ghost" disabled={busy} onClick={disconnect} data-testid="disconnect-account-btn"><Unplug className="mr-1 h-3.5 w-3.5" />Disconnect</Button>}
               </div>
             </div>
           )}

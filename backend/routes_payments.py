@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import secrets
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Literal, Optional
@@ -151,7 +152,7 @@ def _ops_match(p: dict, found: dict) -> bool:
 async def refresh_stellar(p: dict) -> None:
     st = p.get("stellar") or {}
     h = st.get("tx_hash")
-    if not h:
+    if not h or not st.get("submitted_at"):
         return
     found = await stellar.get_transaction(h)
     verification = {"checked_at": now_iso(), "found": found is not None}
@@ -199,23 +200,14 @@ async def stellar_submit(pid: str, body: SubmitIn, ctx: dict = Depends(require_r
     acct = await db.stellar_accounts.find_one({"workspace_id": ctx["ws_id"]}, P)
     if not acct:
         raise HTTPException(status_code=409, detail="Create the workspace Stellar Testnet account first")
-    await db.payments.update_one({"id": pid, "stellar": None}, {"$set": {"stellar": {}}})
-    claimed = await db.payments.find_one_and_update(
-        {"id": pid, "workspace_id": ctx["ws_id"], "status": {"$in": ["approved", "failed"]}},
-        {"$set": {"status": "submitting", "stellar.idempotency_key": body.idempotency_key}},
-        projection=P, return_document=ReturnDocument.AFTER)
+    if acct.get("mode") == "wallet":
+        raise HTTPException(status_code=409, detail="This workspace signs with its connected wallet; use wallet signing")
+    claimed = await _claim(ctx, pid, ["approved", "failed"], "submitting", body.idempotency_key)
     if not claimed:
         return {"payment": await _get_payment(ctx, pid), "idempotent": True}
     prev = claimed.get("stellar") or {}
-    if prev.get("tx_hash"):
-        try:
-            found = await stellar.get_transaction(prev["tx_hash"])
-        except Exception:
-            await _set_stellar(pid, "failed", {"last_error": "Could not check previous attempt; network unavailable"}, "Retry blocked")
-            raise HTTPException(status_code=504, detail="Stellar network unreachable; try again")
-        if found and found["successful"]:
-            await refresh_stellar(claimed)
-            return {"payment": await _get_payment(ctx, pid), "idempotent": True}
+    if await _already_settled(ctx, claimed):
+        return {"payment": await _get_payment(ctx, pid), "idempotent": True}
     amount = claimed.get("amount_str") or f"{Decimal(str(claimed['amount'])):.7f}"
     try:
         tx, tx_hash, source, op = await stellar.build_signed(acct["encrypted_secret"], claimed["destination_address"],
@@ -235,6 +227,34 @@ async def stellar_submit(pid: str, body: SubmitIn, ctx: dict = Depends(require_r
     await db.payments.update_one({"id": pid}, {"$set": {"stellar": st}, "$push": {
         "history": history_entry(ctx, "submitting", f"Confirmed and signed; tx {tx_hash[:12]}…")}})
     await audit(ctx, "stellar.submitted", "payment", pid, tx_hash)
+    await _send(pid, tx)
+    return {"payment": await _get_payment(ctx, pid), "idempotent": False}
+
+
+async def _claim(ctx: dict, pid: str, from_statuses: list, to_status: str, key: str):
+    await db.payments.update_one({"id": pid, "stellar": None}, {"$set": {"stellar": {}}})
+    return await db.payments.find_one_and_update(
+        {"id": pid, "workspace_id": ctx["ws_id"], "status": {"$in": from_statuses}},
+        {"$set": {"status": to_status, "stellar.idempotency_key": key}},
+        projection=P, return_document=ReturnDocument.AFTER)
+
+
+async def _already_settled(ctx: dict, claimed: dict) -> bool:
+    prev = claimed.get("stellar") or {}
+    if not prev.get("tx_hash"):
+        return False
+    try:
+        found = await stellar.get_transaction(prev["tx_hash"])
+    except Exception:
+        await _set_stellar(claimed["id"], "failed", {"last_error": "Could not check previous attempt; network unavailable"}, "Retry blocked")
+        raise HTTPException(status_code=504, detail="Stellar network unreachable; try again")
+    if found and found["successful"]:
+        await refresh_stellar({**claimed, "status": "submitting"})
+        return True
+    return False
+
+
+async def _send(pid: str, tx) -> None:
     try:
         res = await stellar.submit(tx)
         if res.get("successful"):
@@ -253,14 +273,91 @@ async def stellar_submit(pid: str, body: SubmitIn, ctx: dict = Depends(require_r
         log.warning("stellar submit uncertain: %s", type(e).__name__)
         await _set_stellar(pid, "pending_verification", {"status": "unknown", "last_error": "Network timeout — use Verify to reconcile"},
                            "Submission outcome unknown; awaiting verification")
+
+
+@router.post("/payments/{pid}/stellar/prepare")
+async def stellar_prepare(pid: str, body: SubmitIn, ctx: dict = Depends(require_roles(*MANAGERS))):
+    if not body.confirm:
+        raise HTTPException(status_code=422, detail="Explicit confirmation is required")
+    p = await _get_payment(ctx, pid)
+    if p["type"] != "international":
+        raise HTTPException(status_code=409, detail="Only international payments settle on Stellar")
+    if p["status"] in ("submitting", "pending_verification", "confirmed"):
+        return {"payment": p, "idempotent": True, "xdr": None}
+    if p["status"] not in ("approved", "failed", "awaiting_signature"):
+        raise HTTPException(status_code=409, detail="Payment must be approved before submission")
+    acct = await db.stellar_accounts.find_one({"workspace_id": ctx["ws_id"]}, P)
+    if not acct or acct.get("mode") != "wallet":
+        raise HTTPException(status_code=409, detail="Connect a Stellar wallet for this workspace first")
+    claimed = await _claim(ctx, pid, ["approved", "failed", "awaiting_signature"], "awaiting_signature", body.idempotency_key)
+    if not claimed:
+        return {"payment": await _get_payment(ctx, pid), "idempotent": True, "xdr": None}
+    if await _already_settled(ctx, claimed):
+        return {"payment": await _get_payment(ctx, pid), "idempotent": True, "xdr": None}
+    prev = claimed.get("stellar") or {}
+    amount = claimed.get("amount_str") or f"{Decimal(str(claimed['amount'])):.7f}"
+    try:
+        tx, tx_hash, xdr, op = await stellar.build_unsigned(acct["public_key"], claimed["destination_address"],
+                                                            amount, f"AGOS {pid[:8]}", claimed["asset_code"])
+    except ValueError as e:
+        await _set_stellar(pid, "failed", {"last_error": str(e)}, "Validation failed before signing")
+        return {"payment": await _get_payment(ctx, pid), "idempotent": False, "xdr": None}
+    except Exception as e:
+        log.warning("stellar prepare failed: %s", type(e).__name__)
+        await _set_stellar(pid, "failed", {"last_error": "Could not load the wallet account from Stellar (unfunded or network unavailable)"}, "Prepare failed")
+        return {"payment": await _get_payment(ctx, pid), "idempotent": False, "xdr": None}
+    st = {"network": stellar.NETWORK, "source": acct["public_key"], "destination": claimed["destination_address"],
+          "asset_code": claimed["asset_code"], "asset_issuer": claimed.get("asset_issuer"), "amount": amount,
+          "tx_hash": tx_hash, "unsigned_xdr": xdr, "operation": op, "ledger": None, "prepared_at": now_iso(),
+          "submitted_at": None, "confirmed_at": None, "status": "awaiting_signature", "signing": "wallet",
+          "attempts": prev.get("attempts", 0), "last_error": None, "idempotency_key": body.idempotency_key,
+          "verification": None, "submitted_by": ctx["actor_name"]}
+    await db.payments.update_one({"id": pid}, {"$set": {"stellar": st}, "$push": {
+        "history": history_entry(ctx, "awaiting_signature", "Confirmed; prepared for wallet signature")}})
+    return {"payment": await _get_payment(ctx, pid), "idempotent": False, "xdr": xdr,
+            "network_passphrase": stellar.PASSPHRASE, "address": acct["public_key"]}
+
+
+class SignedIn(BaseModel):
+    signed_xdr: str = Field(min_length=50, max_length=20000)
+
+
+@router.post("/payments/{pid}/stellar/submit-signed")
+async def stellar_submit_signed(pid: str, body: SignedIn, ctx: dict = Depends(require_roles(*MANAGERS))):
+    p = await _get_payment(ctx, pid)
+    if p["status"] in ("submitting", "pending_verification", "confirmed"):
+        return {"payment": p, "idempotent": True}
+    if p["status"] != "awaiting_signature":
+        raise HTTPException(status_code=409, detail="Prepare the payment for signing first")
+    acct = await db.stellar_accounts.find_one({"workspace_id": ctx["ws_id"]}, P)
+    if not acct or acct.get("mode") != "wallet":
+        raise HTTPException(status_code=409, detail="No connected wallet")
+    try:
+        env = stellar.parse_signed(body.signed_xdr)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Invalid signed transaction")
+    if env.hash_hex() != p["stellar"]["tx_hash"]:
+        raise HTTPException(status_code=422, detail="Signed transaction does not match the prepared payment")
+    if not stellar.signed_by(env, acct["public_key"]):
+        raise HTTPException(status_code=422, detail="Transaction is not signed by the connected wallet")
+    claimed = await db.payments.find_one_and_update(
+        {"id": pid, "status": "awaiting_signature"},
+        {"$set": {"status": "submitting", "stellar.status": "submitting", "stellar.submitted_at": now_iso(),
+                  "stellar.attempts": (p["stellar"].get("attempts") or 0) + 1},
+         "$push": {"history": history_entry(ctx, "submitting", f"Signed in wallet; tx {env.hash_hex()[:12]}…")}},
+        projection=P)
+    if not claimed:
+        return {"payment": await _get_payment(ctx, pid), "idempotent": True}
+    await audit(ctx, "stellar.submitted_wallet", "payment", pid, env.hash_hex())
+    await _send(pid, env)
     return {"payment": await _get_payment(ctx, pid), "idempotent": False}
 
 
 @router.post("/payments/{pid}/stellar/verify")
 async def stellar_verify(pid: str, ctx: dict = Depends(ws_ctx)):
     p = await _get_payment(ctx, pid)
-    if not (p.get("stellar") or {}).get("tx_hash"):
-        raise HTTPException(status_code=409, detail="No Stellar transaction to verify")
+    if not (p.get("stellar") or {}).get("tx_hash") or p["status"] == "awaiting_signature":
+        raise HTTPException(status_code=409, detail="No submitted Stellar transaction to verify")
     try:
         await refresh_stellar(p)
     except Exception:
@@ -280,6 +377,7 @@ async def refresh_pending_on_startup() -> None:
 
 def _public_acct(a: dict) -> dict:
     return {"public_key": a["public_key"], "network": a["network"], "created_at": a["created_at"],
+            "mode": a.get("mode", "managed"), "wallet": a.get("wallet"),
             "explorer": f"{stellar.EXPLORER}/account/{a['public_key']}"}
 
 
@@ -346,3 +444,60 @@ async def demo_recipient(ctx: dict = Depends(ws_ctx)):
     await db.stellar_recipients.insert_one({"id": new_id(), "workspace_id": ctx["ws_id"], "public_key": pub,
                                             "funded": fb["ok"], "created_at": now_iso()})
     return {"public_key": pub, "funded": fb["ok"]}
+
+
+# ---------------- Connected wallet (Freighter) ----------------
+class ChallengeIn(BaseModel):
+    public_key: str = Field(min_length=56, max_length=56)
+
+
+class ConnectIn(BaseModel):
+    challenge_id: str
+    signed_xdr: str = Field(min_length=50, max_length=20000)
+
+
+@router.post("/stellar/wallet/challenge")
+async def wallet_challenge(body: ChallengeIn, ctx: dict = Depends(require_roles(*MANAGERS))):
+    if not stellar.valid_address(body.public_key):
+        raise HTTPException(status_code=422, detail="Invalid Stellar public key")
+    if await db.stellar_accounts.find_one({"workspace_id": ctx["ws_id"]}):
+        raise HTTPException(status_code=409, detail="Disconnect the current Stellar account first")
+    tx_hash, xdr = stellar.challenge_tx(body.public_key, secrets.token_hex(16))
+    cid = new_id()
+    await db.stellar_challenges.insert_one({"id": cid, "workspace_id": ctx["ws_id"], "public_key": body.public_key,
+                                            "hash": tx_hash, "used": False, "created_at": now_iso()})
+    return {"challenge_id": cid, "xdr": xdr, "network_passphrase": stellar.PASSPHRASE}
+
+
+@router.post("/stellar/wallet/connect")
+async def wallet_connect(body: ConnectIn, ctx: dict = Depends(require_roles(*MANAGERS))):
+    ch = await db.stellar_challenges.find_one({"id": body.challenge_id, "workspace_id": ctx["ws_id"], "used": False}, P)
+    if not ch or datetime.now(timezone.utc) - datetime.fromisoformat(ch["created_at"]) > timedelta(minutes=5):
+        raise HTTPException(status_code=410, detail="Challenge expired; try connecting again")
+    try:
+        env = stellar.parse_signed(body.signed_xdr)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Invalid signed challenge")
+    if env.hash_hex() != ch["hash"] or not stellar.signed_by(env, ch["public_key"]):
+        raise HTTPException(status_code=422, detail="Wallet signature could not be verified")
+    await db.stellar_challenges.update_one({"id": ch["id"]}, {"$set": {"used": True}})
+    if await db.stellar_accounts.find_one({"workspace_id": ctx["ws_id"]}):
+        raise HTTPException(status_code=409, detail="Disconnect the current Stellar account first")
+    doc = {"id": new_id(), "workspace_id": ctx["ws_id"], "public_key": ch["public_key"], "encrypted_secret": None,
+           "mode": "wallet", "wallet": "freighter", "network": stellar.NETWORK, "created_at": now_iso(), "verified_at": now_iso()}
+    await db.stellar_accounts.insert_one(doc)
+    await audit(ctx, "stellar.wallet_connected", "stellar_account", doc["id"], ch["public_key"])
+    return {"public_key": ch["public_key"], "mode": "wallet"}
+
+
+@router.post("/stellar/account/disconnect")
+async def disconnect_account(ctx: dict = Depends(require_roles("owner"))):
+    a = await db.stellar_accounts.find_one({"workspace_id": ctx["ws_id"]}, P)
+    if not a:
+        raise HTTPException(status_code=404, detail="No Stellar account")
+    if await db.payments.count_documents({"workspace_id": ctx["ws_id"], "status": {"$in": ["submitting", "awaiting_signature", "pending_verification"]}}):
+        raise HTTPException(status_code=409, detail="Finish or verify in-flight Stellar payments first")
+    await db.stellar_accounts_archive.insert_one({**a, "archived_at": now_iso(), "archived_by": ctx["actor_name"]})
+    await db.stellar_accounts.delete_one({"workspace_id": ctx["ws_id"], "id": a["id"]})
+    await audit(ctx, "stellar.account_disconnected", "stellar_account", a["id"], a["public_key"])
+    return {"ok": True}

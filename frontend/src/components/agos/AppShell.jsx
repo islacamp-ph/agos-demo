@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, Navigate, Link, useLocation } from "react-router-dom";
 import AdminPanel from "@/pages/app/AdminPanel";
+import { TourLauncher } from "@/components/agos/DemoTour";
 import { UserButton } from "@clerk/react";
 import { LayoutDashboard, Receipt, PieChart, CheckSquare, CreditCard, Send, Orbit, BarChart3, Users, Settings, Menu, Map, ShieldCheck, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -101,6 +102,7 @@ export default function AppShell() {
           <WorkspaceSwitcher />
           {info?.workspace?.is_demo && <SimBadge label="Demo workspace · synthetic data" />}
           <div className="ml-auto flex items-center gap-4">
+            <TourLauncher />
             <PersonaSwitcher />
             {info && !info.personas?.length && <span className="hidden text-xs text-muted-foreground xl:inline" data-testid="current-role">{ROLE_LABEL[info.role]}</span>}
             <UserButton />

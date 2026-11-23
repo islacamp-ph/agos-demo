@@ -4,8 +4,8 @@ import asyncio
 import requests
 from cryptography.fernet import Fernet
 from starlette.concurrency import run_in_threadpool
-from stellar_sdk import Asset, Keypair, Network, Server, StrKey, TransactionBuilder
-from stellar_sdk.exceptions import NotFoundError
+from stellar_sdk import Account, Asset, Keypair, Network, Server, StrKey, TransactionBuilder, TransactionEnvelope
+from stellar_sdk.exceptions import NotFoundError, BadSignatureError
 
 HORIZON_URL = os.environ["STELLAR_HORIZON_URL"]
 NETWORK = os.environ["STELLAR_NETWORK"]
@@ -93,9 +93,8 @@ async def recent_payments(public_key: str) -> list:
     return await _run(_payments, public_key)
 
 
-def _build(enc_secret: str, destination: str, amount: str, memo: str, asset_code: str):
-    kp = Keypair.from_secret(_fernet.decrypt(enc_secret.encode()).decode())
-    source = server.load_account(kp.public_key)
+def _build_unsigned(source_pk: str, destination: str, amount: str, memo: str, asset_code: str):
+    source = server.load_account(source_pk)
     dest_exists = _account(destination) is not None
     builder = TransactionBuilder(source, network_passphrase=PASSPHRASE, base_fee=server.fetch_base_fee())
     if dest_exists:
@@ -107,12 +106,46 @@ def _build(enc_secret: str, destination: str, amount: str, memo: str, asset_code
         builder.append_create_account_op(destination=destination, starting_balance=amount)
         op = "create_account"
     tx = builder.add_text_memo(memo[:28]).set_timeout(TX_VALIDITY_SECONDS).build()
+    return tx, op
+
+
+def _build(enc_secret: str, destination: str, amount: str, memo: str, asset_code: str):
+    kp = Keypair.from_secret(_fernet.decrypt(enc_secret.encode()).decode())
+    tx, op = _build_unsigned(kp.public_key, destination, amount, memo, asset_code)
     tx.sign(kp)
     return tx, tx.hash_hex(), kp.public_key, op
 
 
 async def build_signed(enc_secret: str, destination: str, amount: str, memo: str, asset_code: str):
     return await _run(_build, enc_secret, destination, amount, memo, asset_code)
+
+
+async def build_unsigned(source_pk: str, destination: str, amount: str, memo: str, asset_code: str):
+    tx, op = await _run(_build_unsigned, source_pk, destination, amount, memo, asset_code)
+    return tx, tx.hash_hex(), tx.to_xdr(), op
+
+
+def challenge_tx(public_key: str, nonce: str):
+    # Ownership proof only: sequence 0 makes it impossible to submit.
+    tx = (TransactionBuilder(Account(public_key, -1), network_passphrase=PASSPHRASE, base_fee=100)
+          .append_manage_data_op("agos_auth", nonce.encode()).set_timeout(300).build())
+    return tx.hash_hex(), tx.to_xdr()
+
+
+def parse_signed(xdr: str) -> TransactionEnvelope:
+    return TransactionEnvelope.from_xdr(xdr, PASSPHRASE)
+
+
+def signed_by(env: TransactionEnvelope, public_key: str) -> bool:
+    kp = Keypair.from_public_key(public_key)
+    for sig in env.signatures:
+        if sig.signature_hint == kp.signature_hint():
+            try:
+                kp.verify(env.hash(), sig.signature)
+                return True
+            except BadSignatureError:
+                continue
+    return False
 
 
 async def submit(tx) -> dict:

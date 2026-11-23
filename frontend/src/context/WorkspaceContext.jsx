@@ -63,6 +63,7 @@ export function WorkspaceProvider({ children }) {
   const role = info?.role;
   const value = {
     me, info, wsId, error, role, setWsId, setActAs, reloadMe: loadMe, reloadInfo: loadInfo, version,
+    bump: () => setVersion((v) => v + 1),
     isManager: role === "owner" || role === "finance_manager", isOwner: role === "owner",
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

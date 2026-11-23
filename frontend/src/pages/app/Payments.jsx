@@ -14,6 +14,7 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 import { money, fmtDate, fmtDateTime, shortKey, newKey } from "@/lib/format";
 import { PageHeader, StatusBadge, SimBadge, ChainBadge, Empty } from "@/components/agos/ui";
 import DecideButtons from "@/components/agos/DecideButtons";
+import { signWithFreighter } from "@/lib/wallet";
 
 function NewPayment({ open, setOpen, type, onSaved }) {
   const blank = { recipient_name: "", recipient_bank: "", recipient_account_last4: "", destination_address: "", asset_code: "XLM", amount: "", purpose: "" };
@@ -71,14 +72,29 @@ function StellarActions({ p, onChanged }) {
   const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
   const [key] = useState(newKey());
+  const { data: acct } = useData("/stellar/account");
+  const walletMode = acct?.account?.mode === "wallet";
+  const report = (pay) => {
+    const s = pay.status;
+    if (s === "confirmed") toast.success("Confirmed on the Stellar Testnet ledger"); else if (s === "failed") toast.error(pay.stellar?.last_error || "Submission failed"); else toast.message("Submitted — verify to reconcile");
+  };
+  const submitWallet = async () => {
+    const { data: prep } = await http.post(`/payments/${p.id}/stellar/prepare`, { confirm: true, idempotency_key: key });
+    if (!prep.xdr) return report(prep.payment);
+    const signed = await signWithFreighter(prep.xdr, prep.network_passphrase, prep.address);
+    const { data } = await http.post(`/payments/${p.id}/stellar/submit-signed`, { signed_xdr: signed });
+    report(data.payment);
+  };
   const submit = async () => {
     setBusy(true);
     try {
-      const { data } = await http.post(`/payments/${p.id}/stellar/submit`, { confirm: true, idempotency_key: key });
-      const s = data.payment.status;
-      if (s === "confirmed") toast.success("Confirmed on the Stellar Testnet ledger"); else if (s === "failed") toast.error(data.payment.stellar?.last_error || "Submission failed"); else toast.message("Submitted — verify to reconcile");
+      if (walletMode) await submitWallet();
+      else {
+        const { data } = await http.post(`/payments/${p.id}/stellar/submit`, { confirm: true, idempotency_key: key });
+        report(data.payment);
+      }
       setConfirm(false); onChanged();
-    } catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); }
+    } catch (e) { toast.error(errMsg(e)); onChanged(); } finally { setBusy(false); }
   };
   const verify = async () => {
     setBusy(true);
@@ -86,18 +102,18 @@ function StellarActions({ p, onChanged }) {
   };
   return (
     <div className="flex flex-wrap gap-2">
-      {isManager && ["approved", "failed"].includes(p.status) && <Button size="sm" onClick={() => { setAck(false); setConfirm(true); }} className="bg-[hsl(var(--stellar))] hover:bg-[hsl(190_60%_28%)]" data-testid="stellar-submit-btn"><Send className="mr-1 h-3.5 w-3.5" />{p.status === "failed" ? "Retry on Stellar" : "Confirm & submit to Stellar"}</Button>}
-      {p.stellar?.tx_hash && <Button size="sm" variant="outline" disabled={busy} onClick={verify} data-testid="stellar-verify-btn"><ShieldCheck className="mr-1 h-3.5 w-3.5" />Verify transaction</Button>}
+      {isManager && ["approved", "failed", "awaiting_signature"].includes(p.status) && <Button size="sm" onClick={() => { setAck(false); setConfirm(true); }} className="bg-[hsl(var(--stellar))] hover:bg-[hsl(190_60%_28%)]" data-testid="stellar-submit-btn"><Send className="mr-1 h-3.5 w-3.5" />{walletMode ? "Confirm & sign with wallet" : p.status === "failed" ? "Retry on Stellar" : "Confirm & submit to Stellar"}</Button>}
+      {p.stellar?.tx_hash && p.status !== "awaiting_signature" && <Button size="sm" variant="outline" disabled={busy} onClick={verify} data-testid="stellar-verify-btn"><ShieldCheck className="mr-1 h-3.5 w-3.5" />Verify transaction</Button>}
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Confirm Stellar Testnet payment</DialogTitle><DialogDescription>This signs and submits a real transaction to the Stellar Testnet from your workspace account.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Confirm Stellar Testnet payment</DialogTitle><DialogDescription>{walletMode ? "AGOS prepares the transaction; your Freighter wallet signs it, then AGOS submits it to the Stellar Testnet. AGOS never sees your secret key." : "This signs and submits a real transaction to the Stellar Testnet from your workspace account."}</DialogDescription></DialogHeader>
           <div className="space-y-2 rounded-lg bg-slate-50 p-4 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Amount</span><span className="tnum font-semibold">{money(p.amount, "XLM")}</span></div>
             <div className="flex justify-between gap-4"><span className="text-muted-foreground">To</span><span className="break-all text-right font-mono-plex text-xs">{p.destination_address}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Network</span><span>Stellar Testnet</span></div>
           </div>
           <label className="flex items-start gap-2 text-sm"><Checkbox checked={ack} onCheckedChange={(v) => setAck(!!v)} data-testid="stellar-ack-checkbox" className="mt-0.5" />I authorize this payment. I understand Testnet XLM has no monetary value and ledger confirmation does not prove fiat delivery.</label>
-          <DialogFooter><Button disabled={!ack || busy} onClick={submit} data-testid="stellar-confirm-btn">{busy ? "Signing & submitting…" : "Sign and submit"}</Button></DialogFooter>
+          <DialogFooter><Button disabled={!ack || busy} onClick={submit} data-testid="stellar-confirm-btn">{busy ? (walletMode ? "Waiting for wallet…" : "Signing & submitting…") : walletMode ? "Sign in wallet and submit" : "Sign and submit"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

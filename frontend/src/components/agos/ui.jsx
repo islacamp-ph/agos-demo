@@ -37,6 +37,7 @@ const STATUS = {
   paid: ["Recorded as Paid", "bg-indigo-50 text-indigo-800 border-indigo-200", CheckCircle2],
   recorded_as_paid: ["Recorded (Demo)", "bg-indigo-50 text-indigo-800 border-indigo-200", CheckCircle2],
   submitting: ["Submitting", "bg-cyan-50 text-cyan-800 border-cyan-200", Loader2],
+  awaiting_signature: ["Awaiting Wallet Signature", "bg-cyan-50 text-cyan-800 border-cyan-200", Clock],
   pending_verification: ["Awaiting Verification", "bg-cyan-50 text-cyan-800 border-cyan-200", Clock],
   confirmed: ["Confirmed on Ledger", "bg-emerald-50 text-emerald-800 border-emerald-200", CheckCircle2],
   failed: ["Failed", "bg-red-50 text-red-700 border-red-200", XCircle],
