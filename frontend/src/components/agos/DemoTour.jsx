@@ -20,9 +20,9 @@ const STEPS = [
 
 function useElapsed(start) {
   const [now, setNow] = useState(Date.now());
-  useEffect(() => { if (!start) return undefined; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [start]);
+  useEffect(() => { if (!start) return undefined; setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [start]);
   if (!start) return "0:00";
-  const s = Math.floor((now - start) / 1000);
+  const s = Math.max(0, Math.floor((now - start) / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
@@ -49,6 +49,7 @@ export function TourLauncher() {
   if (!eligible) return null;
   return (
     <>
+      <Button size="icon" variant="outline" className="h-9 w-9 rounded-full sm:hidden" onClick={() => setOpen(true)} data-testid="investor-tour-btn-mobile"><Presentation className="h-4 w-4" /></Button>
       <div className="hidden items-center sm:flex">
         <Button size="sm" variant="outline" className="rounded-l-full rounded-r-none border-r-0" onClick={() => setOpen(true)} data-testid="investor-tour-btn"><Presentation className="mr-1.5 h-4 w-4" />Investor tour</Button>
         <Button size="sm" variant="outline" className="rounded-l-none rounded-r-full px-2.5" onClick={copyTourLink} title="Copy shareable tour link" data-testid="copy-tour-link-btn"><Link2 className="h-4 w-4" /></Button>

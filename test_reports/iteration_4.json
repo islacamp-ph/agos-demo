@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only test of the Tour Share Link feature, using 2 fresh +clerk_test users: A had no workspaces; B had a demo workspace, a real workspace TEST_Real Co, and a persona set in localStorage. All 7 requested behaviours pass. (1) Opening /tour while signed out redirects to /sign-in?redirect_url=%2Ftour. Signing in with a ticket and redirect_url=%2Ftour lands on /tour, which then forwards to the app. (2) User A: exactly 1 Isla Digital Solutions demo workspace was created (checked via /api/me), the app went to /app/overview, the investor-tour-panel opened automatically, and ?tour=1 was removed from the URL. (3) User B, with the real workspace selected and a persona active: /tour switched to the existing demo workspace, created no new workspace (still 1 demo + 1 real), cleared the agos_actas_<demo> key, showed 'Viewing as Test Owner — Owner', and opened the panel. (4) copy-tour-link-btn shows the toast 'Tour link copied — anyone who opens it gets their own private demo' and the clipboard holds <origin>/tour. tour-panel-copy-link also copies <origin>/tour. (5) hero-tour-link reads 'Take the 2-minute investor tour' and links to /tour. (6) /app/overview?tour=1 in TEST_Real Co: no panel, no tour button, and the param was removed. (7) After opening via the link, tour steps 1-3 ran (Overview, then Expenses, then Budgets) and the panel reached step 4 of 6. No console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DemoTour useElapsed timer", "issue": "Right after clicking 'Start tour', the timer shows a negative value such as '-1:-5' for up to 1 second. `now` still holds the time the panel mounted, so it is earlier than `start` until the first interval tick. Reproduced 2 out of 2 times. Fix: in the effect, call setNow(Date.now()) as soon as start is set, or clamp with Math.max(0, ...).", "selector": "[data-testid='tour-timer']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Header on mobile (390px)", "issues": ["The investor-tour-btn and copy-tour-link-btn are hidden below the sm breakpoint (hidden sm:flex). On mobile the only way to copy the share link is inside the tour panel, and the panel can only be opened through /tour. Consider an icon-only button on mobile."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/tour_link_setup.py"],
+  "action_items": [
+    "Fix the negative tour timer flash right after Start (reset `now` when start is set, or clamp to 0)",
+    "Optional: add a way to open or copy the tour link on mobile screens"
+  ],
+  "critical_code_review_comments": [
+    "TourStart: if POST /workspaces/demo returns 409 (user already has 3 demo workspaces but owns none, which is an edge case), the user only sees an error text with no link back to /app. Add a 'Go to dashboard' fallback.",
+    "TourLauncher: the ?tour=1 effect waits for `info`, but a stale `info` from an earlier workspace could be read if setWsId and setInfo(null) were not called together. It currently works because setWsId clears info. Keep that invariant."
+  ],
+  "updated_files": ["/app/backend/tests/tour_link_setup.py"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested flows (1 low-priority pre-existing timer glitch)"},
+  "seed_data_creation": "Created agos.t4tourA+clerk_test and agos.t4tourB+clerk_test, 3 workspaces in total (2 demo, 1 TEST_Real Co), and a few tour expenses. Deleted all of it afterwards by workspace id and user id: workspace-scoped docs, the workspaces, the users docs and the Clerk users. No other data touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run `python /app/backend/tests/tour_link_setup.py > /tmp/tour.json` to get sign-in tickets: A = fresh user, B = user with demo + real workspace + persona id. The script is idempotent and gives fresh tickets on each run. UI sign-in: /sign-in?__clerk_ticket=<t>&redirect_url=%2Ftour. When waiting for a tour step to change, read the step title BEFORE clicking tour-next-btn. Clean up with the workspace-id and user-id approach, not by prefix."
+}
